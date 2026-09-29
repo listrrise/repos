@@ -37,7 +37,7 @@ static void WSendMediaCommand(NSInteger cmd) {
 	if (!tried) {
 		tried = YES;
 		handle = dlopen("/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote", RTLD_NOW);
-		if (handle) fn = dlsym(handle, "MRMediaRemoteSendCommand");
+		if (handle) fn = (int (*)(NSInteger, id))dlsym(handle, "MRMediaRemoteSendCommand");
 	}
 	if (fn) fn(cmd, nil);
 }
