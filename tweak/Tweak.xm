@@ -63,7 +63,7 @@ static CGRect DICardFrame(CGFloat h) {
 	self = [super initWithFrame:frame];
 	if (self) {
 		_bars = [NSMutableArray array];
-		CGFloat bw = 3.0, gap = 4.0;
+		CGFloat bw = 3.0;
 		for (int i = 0; i < 4; i++) {
 			UIView *bar = [[UIView alloc] init];
 			bar.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(0.55 + 0.15 * (i % 2))];
