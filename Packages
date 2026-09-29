@@ -6,11 +6,11 @@ Maintainer: listrrise
 Installed-Size: 356
 Depends: mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 12.0)
 Filename: debs/com.listrrise.dinapenis_0.1.1_iphoneos-arm.deb
-Size: 29122
-MD5sum: 1b07af90d7c75b8ad27a4dea393ac275
-SHA1: 2cd692cb97e7006d5dd725eed404b68e7e6ba982
-SHA256: 2798fa92ab41ccabbbecc15f4004d1a6292340d7b17565b7ab23d1c178b5c1b5
-SHA512: e43c2629f680d44da69489ca3d833acdcb25ea2458dfd46bebb6b4c6656ad469bbd44f35730fc0cbf84525b0d8598a42d651068943ef3f5356dc90751667c851
+Size: 29108
+MD5sum: 199f79bd580e5ca29662bb49b4775c7d
+SHA1: d0ac75c96c2d41b44431afd89ff383c873b7a8ed
+SHA256: ef7dcf366b1b1cf8225f61833df658290915587d17a2d6c4b636bb5ef81713de
+SHA512: 214c73d491ec56b6d886879a0093fe0f2984de0e2d661937fccb994305f7918a36fe0f4463b0ced3c2391546d06dc6be1ef927249d0833ab8450d9a3d7f2a28f
 Description: Dynamic Island как на iPhone 14 Pro, для iOS 12-15 (Now Playing + звонки)
 Name: dinapenis
 Author: yourname
@@ -23,11 +23,11 @@ Maintainer: listrrise
 Installed-Size: 356
 Depends: mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 12.0)
 Filename: debs/com.listrrise.dinapenis_0.1.1_iphoneos-arm64.deb
-Size: 29194
-MD5sum: a37924e99a54df20bf2b91c26c27167e
-SHA1: e54378a6ada08c0d56044ce912a5ba713e137fb0
-SHA256: 62e4f0be26f0bf5f3cc9cb2da782a839a1ddca06cf0329c04f81aea163f8c634
-SHA512: bcf3ceade508a96f43f69fef6e8acf1d46cfdb9ee326b9ef94ed8b8bd5bdbb43fa3c3d605123d7ace85a4c31cfbc9cb49a8e5982e3f004fe1dbab232afe2247f
+Size: 29246
+MD5sum: fe96973212716d1b777182a84cc8a1ef
+SHA1: 6daf9d61ce61f7764bb430df6318f619240f8846
+SHA256: b7568864572d93772cdd2da25a6cb3b3c24d0da9902758668408d80ebff1f281
+SHA512: 0e89fbaeb45463903addb5daba7c516256d5621bb7c37f653f8dcb8228541a1be9b00d084582ccc15474f58c2fbe341a9aea50a31849d3a68e9c2c22fc71296c
 Description: Dynamic Island как на iPhone 14 Pro, для iOS 12-15 (Now Playing + звонки)
 Name: dinapenis
 Author: yourname

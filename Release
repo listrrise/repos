@@ -1,21 +1,29 @@
-Date: Tue, 29 Sep 2026 12:20:49 +0000
+Architectures: iphoneos-arm iphoneos-arm64
+Codename: ios
+Components: main
+Date: Tue, 29 Sep 2026 12:24:03 +0000
+Description: listrrise repo (dinapenis, iOS 12-15)
+Label: listrrise
+Origin: listrrise
+Suite: stable
+Version: 1.0
 MD5Sum:
- 70b62fcf8da227cd9841d913d01cb4c6             1438 Packages
- e7c0a4165fa6d5785b3aab0ca9165a8c              835 Packages.bz2
- e609a4bd8da1cfb4596cfcb3ee00f584              723 Packages.gz
- d2430069db1f473e52e9842f275a8c1d               38 Release
+ a644beca1e248d160a5c23254c3c284f             1438 Packages
+ 0289ebefc293cb5be255d85174a8d21c              834 Packages.bz2
+ 0a358700515cc8771a1f0632d02a3ee7              728 Packages.gz
+ 9c01d2d9ab95ff2a3ab69e9ddb43a6d2              225 Release
 SHA1:
- 0d0642fdea2b4c15ea6d1b215f57eda96fc9b1a5             1438 Packages
- ff86507f1b660db355c9710975b56e3887582778              835 Packages.bz2
- cc06e963c643b096bdec055ca9f1976c093c89d5              723 Packages.gz
- e40b92e7d75b1b198b132af083e36a1fcd4c9943               38 Release
+ 9079f713413128c9502287cae2f9db5c31a9b21d             1438 Packages
+ 81b039508604c2e8cb3659240094798127f6ae8a              834 Packages.bz2
+ 2cdaf5c1c722308d04cc6ce5249c167fd6f47efe              728 Packages.gz
+ c933fe1d5923fe924590ae536df254eacee4584c              225 Release
 SHA256:
- 5f431e48c7d7ab4e3b7cedd93be5ab377b5bf9bc1ccfd34f04a097de5b8cbae3             1438 Packages
- cdb5e233846bf9d4c6ee50a81cb2bfa833071d6da00975df3c789671e697e335              835 Packages.bz2
- fff388c8ab281428781d4102bbe7d88eb9104bcbad73be280e5db6ae502256ac              723 Packages.gz
- cf5960a24feec4d5b0914b0f5a747c9d5b6b31e0b51f324e6c692f45157d365e               38 Release
+ 848b0c061fa23a8f41b82fe492434ef77b80c5d3ef5bc0419d11d0b9acba36c2             1438 Packages
+ 1282948a88275c65c93eedba773fc023cc6b98d02d0f890bd7558fc23c8f9860              834 Packages.bz2
+ 8b2de966c466cfa1ca4d52c3c66575f4f644be9cd346d5daf0f7d6d0f1c28e42              728 Packages.gz
+ 094d976b8b8e735a371c6f5194749a6a4f9e2a61c9b16fffa290952895cf3a8e              225 Release
 SHA512:
- 7f1d80568ac9786b24a0f942649004cd8cd787289245abff93365b916602b4af30f13997ab1079650d6db76ff57dbc575ad974f3ca222ec45e2709b02e906f6b             1438 Packages
- f4164bcc274088a781fe2683a6a326968bb8424b2e1a5c1302075e58bc37d4a7bdfa8f0f0e12ecefccda624d46005efa66ab801ff4ab0b0e155309cf7b058d7f              835 Packages.bz2
- a3f8cf8709911443b106e457da24769f2e7cd319bc2430329a69a485630d4c7b902246ce0363c60ad896e1c226a55c64cddaeb8a6562633a2a76cd085218cead              723 Packages.gz
- 3450e9b0144e1989f60801e87566f14df70e7bad114baa944fd7883b6bd5eab78019e0dcf4650a15a4df9e919bfeec86f6240ea2922960a138ccee63cb2f7d58               38 Release
+ d26bfdc2d9078ed39159afaaf388ffdc24e26a3684a387e418a1b49076b30e4f43241c8f93d568b23fe3cf96c50cf9e9e52c1a7a9ebc9308f031505805f98436             1438 Packages
+ b5174af81d49ac4b2e9c0a8f83655ffac035faa1a9a1eb9c23a9d6bacd23ad4d592840da101666c66ceb9ce9e415506eb98b58769a133e9686acfc5e0baf744b              834 Packages.bz2
+ fbe526fefb0b2eb64880f08d63e58adc5beebc7cea48ac2310474b11a6b76d107830e58d8323e8a9006f74d89a083e99bf85d87ab948ab6242cc2f7ac3f69794              728 Packages.gz
+ adf9e9535c0f679f4540b8d053ce758cf6d3baa0adbb8a65ef05c09a79111976094207ed9cb32e3a9191188f99adcf27f1ff86f6cd8c05c92ad1cb87c6b98a64              225 Release
