@@ -48,7 +48,7 @@ jobs:
           apt-ftparchive packages debs > Packages
           gzip -kf Packages
           bzip2 -kf Packages
-          apt-ftparchive -c ../release.conf release . > Release
+          python3 ../scripts/make_release.py .
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
