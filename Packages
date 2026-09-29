@@ -1,33 +1,33 @@
 Package: com.listrrise.dinapenis
 Architecture: iphoneos-arm
-Version: 0.1.0
+Version: 0.1.1
 Section: Tweaks
 Maintainer: listrrise
 Installed-Size: 356
 Depends: mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 12.0)
-Filename: debs/com.listrrise.dinapenis_0.1.0_iphoneos-arm.deb
-Size: 28704
-MD5sum: 2da7df800bd68e95b2663b4684189958
-SHA1: 2cc44f44e1a3bad31c32a548a5ffdf756161ee5f
-SHA256: a8df0055f22e12fc75360baedc72a68dfe7e2778d05c2374dea35f217169a0ab
-SHA512: f86a1f35c6e2ef0b6014347752c5ec71280c88d71dffa036828413c3199879b4b35eb92e3f47bc3d023f7047529a30447e132b0dfc81ab1aba3eb2aa5f3ae423
+Filename: debs/com.listrrise.dinapenis_0.1.1_iphoneos-arm.deb
+Size: 29122
+MD5sum: 1b07af90d7c75b8ad27a4dea393ac275
+SHA1: 2cd692cb97e7006d5dd725eed404b68e7e6ba982
+SHA256: 2798fa92ab41ccabbbecc15f4004d1a6292340d7b17565b7ab23d1c178b5c1b5
+SHA512: e43c2629f680d44da69489ca3d833acdcb25ea2458dfd46bebb6b4c6656ad469bbd44f35730fc0cbf84525b0d8598a42d651068943ef3f5356dc90751667c851
 Description: Dynamic Island как на iPhone 14 Pro, для iOS 12-15 (Now Playing + звонки)
 Name: dinapenis
 Author: yourname
 
 Package: com.listrrise.dinapenis
 Architecture: iphoneos-arm64
-Version: 0.1.0
+Version: 0.1.1
 Section: Tweaks
 Maintainer: listrrise
 Installed-Size: 356
 Depends: mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 12.0)
-Filename: debs/com.listrrise.dinapenis_0.1.0_iphoneos-arm64.deb
-Size: 28760
-MD5sum: cd8107be02154191c9557e84fbd65e16
-SHA1: 6e4e016254c95d1db204fde7122d7457125dd80f
-SHA256: f7459a7284a2aa4ed252476d43b1ac29f710f3ef2674740902af853283b506d4
-SHA512: 7c5b7a823696afd4de751653de8f55d840b7828ce83232daacc37679b7d9243c175b5b69568673b2684ac1aa4a955f54d98766d40d071b3644c980773bd87123
+Filename: debs/com.listrrise.dinapenis_0.1.1_iphoneos-arm64.deb
+Size: 29194
+MD5sum: a37924e99a54df20bf2b91c26c27167e
+SHA1: e54378a6ada08c0d56044ce912a5ba713e137fb0
+SHA256: 62e4f0be26f0bf5f3cc9cb2da782a839a1ddca06cf0329c04f81aea163f8c634
+SHA512: bcf3ceade508a96f43f69fef6e8acf1d46cfdb9ee326b9ef94ed8b8bd5bdbb43fa3c3d605123d7ace85a4c31cfbc9cb49a8e5982e3f004fe1dbab232afe2247f
 Description: Dynamic Island как на iPhone 14 Pro, для iOS 12-15 (Now Playing + звонки)
 Name: dinapenis
 Author: yourname
