@@ -5,6 +5,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 
 SUBPROJECTS += tweak
 SUBPROJECTS += prefs
+SUBPROJECTS += widgets
 
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk

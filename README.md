@@ -1,36 +1,33 @@
-# dinapenis — Dynamic Island для iOS 12–15
-
-Остров как на iPhone 14 Pro: чёрная пилюля по центру верха экрана,
-раскрывается карточкой при музыке и звонках.
+# dinapenis — Dynamic Island + виджеты для iOS 12–15
 
 **Sileo-репозиторий:** `https://listrrise.github.io/repos/`
 
+## Состав (v0.2.0)
+- **Остров**: пилюля 126×37, спринг-анимация, компактный режим
+  (иконка + waveform/пульс), Now Playing, звонки через CallKit.
+- **Свайпы по острову**: влево — предыдущий трек, вправо — следующий
+  (приватный MediaRemote через dlopen, публичный SDK собирается).
+  Тап — раскрыть/схлопнуть.
+- **Виджеты домашнего экрана** (стиль iOS 16): часы, батарея, музыка
+  (тап — пауза/играть). Видны только дома, тапы мимо карточек уходят иконкам.
+- **Настройки**: «Настройки → dinapenis» (остров, свайпы, виджеты, анимация).
+
 ## Структура
 ```
-├── Makefile        # aggregate: tweak + prefs
-├── control
-├── tweak/          # сам твик (SpringBoard)
-├── prefs/          # панель в Настройках
-├── index.html      # страница репозитория
-├── CydiaIcon.png   # иконка репозитория
-└── .github/workflows/build.yml  # сборка .deb + публикация в gh-pages
+├── tweak/    # DinaPenis (остров)
+├── widgets/  # DinaWidgets (виджеты, только SpringBoard/домашний экран)
+├── prefs/    # панель настроек + иконка-капсула
+├── index.html  # страница репо с вкладками iOS 12–15 / 15+ / 12+ / Any
+└── .github/workflows/build.yml  # CI: rootful+rootless .deb → gh-pages
 ```
-
-## Что умеет
-- Пилюля 126×37 поверх всего, спринг-анимация (damping 0.72).
-- Компактный режим: иконка + живая waveform / пульс звонка.
-- Now Playing (название, артист, обложка), звонки через CallKit.
-- Тап — раскрыть/схлопнуть, вибрация, авто-схлоп через 5–6 сек.
-- Настройки в «Настройки → dinapenis», применяются на лету.
 
 ## Сборка локально (Theos)
 ```bash
 export THEOS=~/theos
-make package            # rootful (checkra1n/unc0ver)
-make package THEOS_PACKAGE_SCHEME=rootless   # palera1n/Dopamine
+make package            # rootful
+make package THEOS_PACKAGE_SCHEME=rootless   # rootless
 ```
 
-## Как работает репозиторий
-Каждый пуш в `main` запускает Action: сборка rootful + rootless `.deb`
-на macOS-раннере с Theos, генерация `Packages`/`Release` и деплой
-в ветку `gh-pages`. Sileo-источник: `https://listrrise.github.io/repos/`.
+## Ограничения
+- Виджеты перекрывают верхний ряд иконок (как у iOS 14 их не раздвигаем, v1).
+- Таймеры/AirPods/зарядка в острове — нет (приватные фреймворки по версиям).

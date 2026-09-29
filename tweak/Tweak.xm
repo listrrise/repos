@@ -2,6 +2,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <MediaPlayer/MediaPlayer.h>
 #import <CallKit/CallKit.h>
+#include <dlfcn.h>
 
 // ================= Prefs =================
 static NSString *const kDIPrefsPath = @"/var/mobile/Library/Preferences/com.listrrise.dinapenis.plist";
@@ -14,6 +15,7 @@ static BOOL DICompactIcons = YES; // компактный контент в св
 static BOOL DIHaptics = YES;
 static CGFloat DITopOffset = 11.0;
 static CGFloat DIAnimSpeed = 1.0; // 0.5..1.5, 1.0 = норма
+static BOOL DISwipes = YES; // свайпы: влево — назад, вправо — вперёд
 
 static void DILoadPrefs(void) {
 	NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:kDIPrefsPath];
@@ -25,6 +27,7 @@ static void DILoadPrefs(void) {
 	if (p[@"Haptics"])      DIHaptics      = [p[@"Haptics"] boolValue];
 	if (p[@"TopOffset"])    DITopOffset    = [p[@"TopOffset"] floatValue];
 	if (p[@"AnimSpeed"])    DIAnimSpeed    = MAX(0.2, [p[@"AnimSpeed"] floatValue]);
+	if (p[@"Swipes"])       DISwipes       = [p[@"Swipes"] boolValue];
 }
 
 static void DIPrefsCallback(CFNotificationCenterRef center, void *observer,
@@ -47,6 +50,20 @@ static CGRect DICardFrame(CGFloat h) {
 	CGFloat w = [UIScreen mainScreen].bounds.size.width;
 	CGFloat cw = DICardWidth();
 	return CGRectMake((w - cw) / 2.0, DITopOffset, cw, h);
+}
+
+// Приватный MediaRemote через dlopen — собирается публичным SDK.
+// Команды: 2 = play/pause, 4 = next, 5 = prev (стабильные значения iOS 7–15).
+static void DISendMediaCommand(NSInteger cmd) {
+	static void *handle = NULL;
+	static int (*fn)(NSInteger, id) = NULL;
+	static BOOL tried = NO;
+	if (!tried) {
+		tried = YES;
+		handle = dlopen("/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote", RTLD_NOW);
+		if (handle) fn = dlsym(handle, "MRMediaRemoteSendCommand");
+	}
+	if (fn) fn(cmd, nil);
 }
 
 // ================= Waveform (живые столбики в пилюле) =================
@@ -199,12 +216,26 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 		UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap)];
 		[self addGestureRecognizer:tap];
+		UISwipeGestureRecognizer *swLeft = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipeLeft)];
+		swLeft.direction = UISwipeGestureRecognizerDirectionLeft;
+		[self addGestureRecognizer:swLeft];
+		UISwipeGestureRecognizer *swRight = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipeRight)];
+		swRight.direction = UISwipeGestureRecognizerDirectionRight;
+		[self addGestureRecognizer:swRight];
 	}
 	return self;
 }
 
 - (void)handleTap {
 	[[NSNotificationCenter defaultCenter] postNotificationName:@"DIIslandTapped" object:nil];
+}
+
+- (void)handleSwipeLeft {
+	[[NSNotificationCenter defaultCenter] postNotificationName:@"DIIslandSwipeLeft" object:nil];
+}
+
+- (void)handleSwipeRight {
+	[[NSNotificationCenter defaultCenter] postNotificationName:@"DIIslandSwipeRight" object:nil];
 }
 
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art {
@@ -353,6 +384,10 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		[_callObserver setDelegate:self queue:dispatch_get_main_queue()];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onTap)
 			name:@"DIIslandTapped" object:nil];
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onSwipeLeft)
+			name:@"DIIslandSwipeLeft" object:nil];
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onSwipeRight)
+			name:@"DIIslandSwipeRight" object:nil];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onRotate)
 			name:UIApplicationDidChangeStatusBarOrientationNotification object:nil];
 	}
@@ -403,6 +438,20 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		return;
 	}
 	[self setExpanded:!_island.expanded animated:YES];
+}
+
+- (void)onSwipeLeft {
+	if (!DIEnabled || !DISwipes) return;
+	if (_island.contentType != DIContentMedia) return;
+	DISendMediaCommand(5); // предыдущий трек
+	[self haptic];
+}
+
+- (void)onSwipeRight {
+	if (!DIEnabled || !DISwipes) return;
+	if (_island.contentType != DIContentMedia) return;
+	DISendMediaCommand(4); // следующий трек
+	[self haptic];
 }
 
 - (void)haptic {

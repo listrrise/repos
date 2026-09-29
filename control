@@ -1,9 +1,9 @@
 Package: com.listrrise.dinapenis
 Name: dinapenis
-Version: 0.1.1
+Version: 0.2.0
 Architecture: iphoneos-arm
-Description: Dynamic Island как на iPhone 14 Pro, для iOS 12-15 (Now Playing + звонки)
+Description: Dynamic Island + виджеты домашнего экрана для iOS 12-15
 Maintainer: listrrise
 Author: yourname
-Section: Tweaks
+Section: Tweaks (iOS 12-15)
 Depends: mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 12.0)
