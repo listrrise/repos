@@ -187,7 +187,7 @@ static UIVisualEffectView *DWMakeCard(CGFloat height) {
 	hint.font = [UIFont systemFontOfSize:11.0];
 	hint.textColor = [UIColor colorWithWhite:0.45 alpha:1.0];
 	hint.text = @"тап — пауза / играть";
-	[card.contentView addSubview:_hint];
+	[card.contentView addSubview:hint];
 	UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(musicTap)];
 	[card addGestureRecognizer:tap];
 	return card;
