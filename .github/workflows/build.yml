@@ -1,0 +1,57 @@
+name: Build repo
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Theos
+        run: |
+          brew install ldid xz
+          git clone --recursive https://github.com/theos/theos "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Build rootful .deb
+        run: make package FINALPACKAGE=1
+
+      - name: Build rootless .deb
+        run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debs
+          path: packages/*.deb
+
+  repo:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: debs
+          path: repo/debs
+
+      - name: Build APT repo
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev bzip2
+          cp CydiaIcon.png index.html repo/
+          cd repo
+          apt-ftparchive packages debs > Packages
+          gzip -kf Packages
+          bzip2 -kf Packages
+          apt-ftparchive release . > Release
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./repo
