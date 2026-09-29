@@ -5,18 +5,63 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>listrrise repo</title>
 <style>
-body { font-family: -apple-system, sans-serif; text-align: center; padding: 40px 20px; background: #000; color: #fff; }
+body { font-family: -apple-system, sans-serif; text-align: center; padding: 24px 16px; background: #000; color: #fff; }
 a.btn { display: inline-block; margin: 8px; padding: 12px 28px; border-radius: 24px;
   background: #fff; color: #000; text-decoration: none; font-weight: 600; }
 .muted { color: #888; }
+.tabs { margin: 20px 0 8px; }
+.tabs button { margin: 4px; padding: 8px 16px; border-radius: 16px; border: 1px solid #444;
+  background: #111; color: #fff; font-size: 14px; }
+.tabs button.active { background: #fff; color: #000; }
+.card { max-width: 420px; margin: 12px auto; padding: 16px; border-radius: 20px;
+  background: #161617; text-align: left; }
+.card b { font-size: 17px; }
+.card .ver { color: #888; font-size: 13px; }
+.card p { color: #bbb; font-size: 14px; margin: 8px 0; }
+.badge { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 10px;
+  background: #2c2c2e; color: #9d9da5; margin-right: 4px; }
 </style>
 </head>
 <body>
 <h1>listrrise repo</h1>
-<p class="muted">Твики для iOS 12–15 • dinapenis (Dynamic Island)</p>
+<p class="muted">Твики для iOS • выбери свою версию</p>
 <p>
   <a class="btn" href="sileo://source/https://listrrise.github.io/repos/">Добавить в Sileo</a>
   <a class="btn" href="cydia://url/https://cydia.saurik.com/api/share#?source=https://listrrise.github.io/repos/">Добавить в Cydia</a>
 </p>
+<div class="tabs">
+  <button data-tab="12-15" class="active">iOS 12–15</button>
+  <button data-tab="15+">iOS 15+</button>
+  <button data-tab="12+">iOS 12+</button>
+  <button data-tab="any">Any iOS</button>
+</div>
+<div id="list"></div>
+<script>
+var pkgs = [
+  { name: "dinapenis", ver: "0.2.0",
+    desc: "Dynamic Island + виджеты домашнего экрана. Остров с музыкой и звонками, свайпы треков, виджеты часов/батареи/музыки.",
+    fw: ["12-15", "12+", "any"], section: "Tweaks (iOS 12-15)" }
+];
+var labels = { "12-15": "iOS 12–15", "15+": "iOS 15+", "12+": "iOS 12+", "any": "Any iOS" };
+function render(tab) {
+  var html = "";
+  pkgs.forEach(function(p) {
+    if (p.fw.indexOf(tab) < 0) return;
+    html += '<div class="card"><b>' + p.name + '</b> '
+      + '<span class="ver">' + p.ver + '</span><br>'
+      + '<span class="badge">' + p.section + '</span><br><p>' + p.desc + '</p></div>';
+  });
+  if (!html) html = '<p class="muted">Пока пусто — твики для ' + labels[tab] + ' скоро будут.</p>';
+  document.getElementById("list").innerHTML = html;
+}
+document.querySelectorAll(".tabs button").forEach(function(b) {
+  b.onclick = function() {
+    document.querySelectorAll(".tabs button").forEach(function(x) { x.classList.remove("active"); });
+    b.classList.add("active");
+    render(b.getAttribute("data-tab"));
+  };
+});
+render("12-15");
+</script>
 </body>
 </html>

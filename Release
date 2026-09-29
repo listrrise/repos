@@ -3,19 +3,19 @@ Label: listrrise
 Suite: stable
 Version: 1.0
 Codename: ios
-Date: Tue, 29 Sep 2026 12:27:49 GMT
+Date: Tue, 29 Sep 2026 12:59:20 GMT
 Architectures: iphoneos-arm iphoneos-arm64
 Components: main
 Description: listrrise repo (dinapenis, iOS 12-15)
 MD5Sum:
- 8a14bedc44506f067afb447ff62ed21d             1438 Packages
- e8114643d2617a85eb8e0cbb37317537              724 Packages.gz
- 5aac238ca2629efdc76815d9746f9bc9              825 Packages.bz2
+ 500e7aef162a9cbd56bef4a669aff8cd             1448 Packages
+ 0299fdaf0afd3f8cd1c17aa0b6bc5930              731 Packages.gz
+ d4de2fb8d90f5f10fd91e1740efc1f45              837 Packages.bz2
 SHA1:
- 938b9d872b2845d1d26a9f6fddf2f216d1eabc5f             1438 Packages
- ec8094f278489a9b0973e6ef95ce3922e797a076              724 Packages.gz
- b7cadcf97bcdd7fcffebb3f5fedaa1da100d76fd              825 Packages.bz2
+ 40c4550300d2ada89684d2e24a09226f82f17250             1448 Packages
+ ed6f21e1768580eab140997df1f3e100a7cfda25              731 Packages.gz
+ 3e941e1cf97ce2c43f2ee4c40f23f9f8e17fa8d5              837 Packages.bz2
 SHA256:
- 9ed85fc8affddda48116abb556dbc6331233591561145f71a8bb233bb161ef2f             1438 Packages
- abc9be1693f306f82145c737e20ddde6c5cbb0984c0f9d8eac5ed88db94df279              724 Packages.gz
- 6413727d72f513b97356025a5d20f95d1612ae16de8271803f04190281ce3a13              825 Packages.bz2
+ 0c464e4a51b7752d25f15514a6f1934933860e0ed0b4435f0e7cb5117b2d720e             1448 Packages
+ fdc47916e7d9b480e76f1fdb06d7d2f35752330bc6a6ceb6a720922a8135a5c7              731 Packages.gz
+ 7df049abe4cef2ab2957eaba1fe20175810b44523429852c946775027a3019b8              837 Packages.bz2
