@@ -266,6 +266,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	DIContentMedia,
 	DIContentCall,
 	DIContentLock,
+	DIContentCharging,
 };
 
 @interface DIIslandView : UIView
