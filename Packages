@@ -1,34 +1,68 @@
-Package: com.listrrise.dinapenis
+Package: com.listrise.dinagestures
+Architecture: iphoneos-arm
+Version: 0.1.0
+Section: Any iOS
+Maintainer: listrise
+Installed-Size: 156
+Depends: mobilesubstrate
+Filename: debs/com.listrise.dinagestures_0.1.0_iphoneos-arm.deb
+Size: 9630
+MD5sum: f061354c19f8920175863879fdd28eca
+SHA1: 24d75154b56c87c6ec8153c76be525fea8f169f0
+SHA256: 993f7d376985bd609d3dde5438eb92ab367ee58625b3571217da679169c5ae96
+SHA512: e2575ea9646654b5b62b59dbe01cc7b17015f25e35915e5c535f7d9fca7a06ea21b26bbaaa0dea06332c5b2f4b7236e5cd6e7ca6121ff6ffd221d2ed05455107
+Description: Жесты iPhone X и полоска-индикатор
+Name: dinagestures
+Author: listrise
+
+Package: com.listrise.dinagestures
+Architecture: iphoneos-arm64
+Version: 0.1.0
+Section: Any iOS
+Maintainer: listrise
+Installed-Size: 156
+Depends: mobilesubstrate
+Filename: debs/com.listrise.dinagestures_0.1.0_iphoneos-arm64.deb
+Size: 9706
+MD5sum: 4703cfd542837a1c4ada3f6b8d99da89
+SHA1: 43dbe2ee935d054e720bbf7d584a97a0ba95b447
+SHA256: 27a1a00a8a8369141ac008e63ae51203705f6555406afa74eb42ad9a6d374bd7
+SHA512: 577d2e4f860c8e5ea6dcf5310d081f02ddae1ebd0d4c53d5db2c22b489c0f14377a5a78e2958cd32357397ce291ecb2aad7c8c3554512b4316343220cca53fce
+Description: Жесты iPhone X и полоска-индикатор
+Name: dinagestures
+Author: listrise
+
+Package: com.listrise.dinapenis
 Architecture: iphoneos-arm
 Version: 0.2.0
 Section: Tweaks (iOS 12-15)
-Maintainer: listrrise
+Maintainer: listrise
 Installed-Size: 360
 Depends: mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 12.0)
-Filename: debs/com.listrrise.dinapenis_0.2.0_iphoneos-arm.deb
-Size: 30748
-MD5sum: 929e668f39b04fb75835bf99391614c0
-SHA1: 7fb57a97c82a895ef4a0df3c2dbbf48c87f03b88
-SHA256: 7eabcfab5f5682725de5fe8df76d628c3aa79670a490ed9b971c847a6ebb6e93
-SHA512: b1163e4312b6b1f518e843494a1c412fd7e113fb7e0145e2adac2c0e6fade1f242f4373f59b8d0c3324407d721d369d0aacc467d8b4473e60408649777a51881
+Filename: debs/com.listrise.dinapenis_0.2.0_iphoneos-arm.deb
+Size: 32470
+MD5sum: 101b8a2ac8a3340abd38d7643737b095
+SHA1: 4a356fb3f063acfc244b8faa117d1ecde5703ba1
+SHA256: f30765925634ef10f6ef88d24fc07de7ceaa398d373a03b698b09c7f58eed7f0
+SHA512: 25a2f81a52dbdd3cf4a1791ea296679f619f380130ab013e66e36b0f5f2c8911b062f02589afd7bffb7983fee74359782c03ff54f420c75a36f9d612d72d24ee
 Description: Dynamic Island как на iPhone 14 Pro, для iOS 12-15
 Name: dinapenis
-Author: yourname
+Author: listrise
 
-Package: com.listrrise.dinapenis
+Package: com.listrise.dinapenis
 Architecture: iphoneos-arm64
 Version: 0.2.0
 Section: Tweaks (iOS 12-15)
-Maintainer: listrrise
+Maintainer: listrise
 Installed-Size: 360
 Depends: mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 12.0)
-Filename: debs/com.listrrise.dinapenis_0.2.0_iphoneos-arm64.deb
-Size: 30856
-MD5sum: edcbd43e7f9713b7948ea15f068d4d48
-SHA1: 2409bca8431f81368978d0ecdb1cc42bd6b6e4f9
-SHA256: 807a0c1e0a619c0e5b79a402100b6cfcdf89181e029c3bafee3e3f3e17868845
-SHA512: 6f532d84d94f7805df3c4dadc0341d3a977401019ef736c584a8a28799253dca8e07de1d665e7029a3e7865bba473afc14f2267ced6b53d924d6badfeb4846a8
+Filename: debs/com.listrise.dinapenis_0.2.0_iphoneos-arm64.deb
+Size: 32508
+MD5sum: e89c7f8075b6d3eeec8774e9fec5a397
+SHA1: 3b45a0ed4faef7874b7a80c32598ccba82b5ed4b
+SHA256: a909210fb28fcea593dd324ff793e3729b10baf9b1a52d874252e918e6f2beab
+SHA512: 5690b305bf6ba6b28a0d0712b90ad49abc73f08f7d5f64f9c576f9d10224b54042da9ebbfc0ca0babe9dc40466d861f690472a9db6fb7d2a0046144960d54c94
 Description: Dynamic Island как на iPhone 14 Pro, для iOS 12-15
 Name: dinapenis
-Author: yourname
+Author: listrise
 
