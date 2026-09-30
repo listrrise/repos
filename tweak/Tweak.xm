@@ -135,6 +135,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	DIContentNone = 0,
 	DIContentMedia,
 	DIContentCall,
+	DIContentLock,
 };
 
 @interface DIIslandView : UIView
@@ -153,6 +154,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) UILabel *compactIcon;
 @property (nonatomic, strong) DIWaveView *compactWave;
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art;
+- (void)setCardIcon:(NSString *)icon;
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated;
 @end
 
@@ -257,15 +259,27 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_artworkView.image = art;
 		_compactIcon.text = @"🎵";
 		_compactWave.hidden = NO;
-	} else {
+	} else if (type == DIContentCall) {
 		_iconLabel.hidden = NO;
 		_artworkView.hidden = YES;
 		_iconLabel.text = @"📞";
 		_compactIcon.text = @"📞";
 		[_compactWave stop];
+	} else { // DIContentLock
+		_iconLabel.hidden = NO;
+		_artworkView.hidden = YES;
+		_iconLabel.text = @"🔒";
+		_compactIcon.text = @"🔒";
+		[_compactWave stop];
+	}
 	}
 	// Мгновенно показываем компакт, плавность — в схлопывании/раскрытии
 	[self applyAlphasAnimated:NO];
+}
+
+- (void)setCardIcon:(NSString *)icon {
+	_iconLabel.text = icon;
+	_compactIcon.text = icon;
 }
 
 - (void)applyAlphasAnimated:(BOOL)animated {
@@ -519,6 +533,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)refresh {
+	if (_island.contentType == DIContentLock) return; // замком управляют didLock/didUnlock
 	DIContentType want = DIContentNone;
 	NSString *t = nil, *s = nil;
 	UIImage *a = nil;
@@ -550,9 +565,34 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)autoCollapse {
+	if (_island.contentType == DIContentLock) return;
 	if (_island.contentType != DIContentNone && _island.expanded) {
 		[self setExpanded:NO animated:YES];
 	}
+}
+
+- (void)didLock {
+	// Экран заблокировали — остров раскрывается с замком и текущим временем
+	if (!DIEnabled) return;
+	static NSDateFormatter *tf = nil;
+	if (!tf) {
+		tf = [[NSDateFormatter alloc] init];
+		tf.dateFormat = @"HH:mm";
+	}
+	NSString *now = [tf stringFromDate:[NSDate date]];
+	[_island setContent:DIContentLock title:@"Заблокировано" subtitle:now artwork:nil];
+	[self setExpanded:YES animated:YES];
+}
+
+- (void)didUnlock {
+	// Разблокировка — замок morph'ится в открытый и остров схлопывается
+	if (!DIEnabled) return;
+	[self haptic];
+	[_island setContent:DIContentLock title:@"Разблокировано" subtitle:@"" artwork:nil];
+	[_island setCardIcon:@"🔓"];
+	[self setExpanded:YES animated:YES];
+	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(refresh) object:nil];
+	[self performSelector:@selector(refresh) withObject:nil afterDelay:0.9];
 }
 
 #pragma mark - CXCallObserverDelegate
@@ -568,7 +608,19 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 @end
 
+// Замок/разблокировка (SBLockScreenManager есть на всех iOS 12–15)
 // ================= Точка входа =================
+%hook SBLockScreenManager
+- (void)lockUIFromSource:(int)source withOptions:(id)options {
+	%orig;
+	[[DIIslandManager shared] didLock];
+}
+- (void)unlockUIFromSource:(int)source withOptions:(id)options {
+	%orig;
+	[[DIIslandManager shared] didUnlock];
+}
+%end
+
 %ctor {
 	DILoadPrefs();
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
