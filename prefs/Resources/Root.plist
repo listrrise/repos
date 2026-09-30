@@ -56,6 +56,34 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.listrise.dinapenis</string>
+			<key>key</key>
+			<string>ShowCharging</string>
+			<key>label</key>
+			<string>Зарядка</string>
+			<key>PostNotification</key>
+			<string>com.listrise.dinapenis/prefs.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.listrise.dinapenis</string>
+			<key>key</key>
+			<string>FakeActivity</string>
+			<key>label</key>
+			<string>Фейк-активность (превью)</string>
+			<key>PostNotification</key>
+			<string>com.listrise.dinapenis/prefs.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Пилюля</string>

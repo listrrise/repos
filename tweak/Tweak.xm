@@ -3,6 +3,7 @@
 #import <MediaPlayer/MediaPlayer.h>
 #import <CallKit/CallKit.h>
 #include <dlfcn.h>
+#include <notify.h>
 
 // ================= Prefs =================
 static NSString *const kDIPrefsPath = @"/var/mobile/Library/Preferences/com.listrise.dinapenis.plist";
@@ -16,6 +17,8 @@ static BOOL DIHaptics = YES;
 static CGFloat DITopOffset = 11.0;
 static CGFloat DIAnimSpeed = 1.0; // 0.5..1.5, 1.0 = норма
 static BOOL DISwipes = YES; // свайпы: влево — назад, вправо — вперёд
+static BOOL DIShowCharging = YES;
+static BOOL DIFake = NO; // фейк-активность для превью из настроек
 
 static void DILoadPrefs(void) {
 	NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:kDIPrefsPath];
@@ -28,6 +31,8 @@ static void DILoadPrefs(void) {
 	if (p[@"TopOffset"])    DITopOffset    = [p[@"TopOffset"] floatValue];
 	if (p[@"AnimSpeed"])    DIAnimSpeed    = MAX(0.2, [p[@"AnimSpeed"] floatValue]);
 	if (p[@"Swipes"])       DISwipes       = [p[@"Swipes"] boolValue];
+	if (p[@"ShowCharging"]) DIShowCharging = [p[@"ShowCharging"] boolValue];
+	if (p[@"FakeActivity"]) DIFake         = [p[@"FakeActivity"] boolValue];
 }
 
 static void DIPrefsCallback(CFNotificationCenterRef center, void *observer,
@@ -196,6 +201,65 @@ static void DISendMediaCommand(NSInteger cmd) {
 
 @end
 
+// ================= Батарея иконкой (зарядка, не эмодзи) =================
+@interface DIBatteryIconView : UIView
+@property (nonatomic, assign) CGFloat level; // 0..1
+@end
+
+@implementation DIBatteryIconView
+
+- (instancetype)initWithFrame:(CGRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) {
+		self.backgroundColor = [UIColor clearColor];
+		self.opaque = NO;
+		_level = -1.0;
+	}
+	return self;
+}
+
+- (void)setLevel:(CGFloat)level {
+	_level = level;
+	[self setNeedsDisplay];
+}
+
+- (void)drawRect:(CGRect)rect {
+	CGFloat w = rect.size.width, h = rect.size.height;
+	CGFloat lw = MAX(2.0, w * 0.07);
+	CGFloat capW = w * 0.09;
+	CGFloat bodyW = w - capW - lw;
+	CGFloat bodyH = h * 0.52;
+	CGFloat bodyY = (h - bodyH) / 2.0;
+	UIColor *white = [UIColor whiteColor];
+	// Кончик
+	CGFloat capH = bodyH * 0.42;
+	UIBezierPath *cap = [UIBezierPath bezierPathWithRoundedRect:
+		CGRectMake(lw / 2.0 + bodyW, (h - capH) / 2.0, capW, capH) cornerRadius:capW * 0.3];
+	[white setFill];
+	[cap fill];
+	// Корпус
+	UIBezierPath *out = [UIBezierPath bezierPathWithRoundedRect:
+		CGRectMake(lw / 2.0, bodyY, bodyW, bodyH) cornerRadius:bodyH * 0.28];
+	[white setStroke];
+	out.lineWidth = lw;
+	[out stroke];
+	// Заливка по уровню
+	CGFloat lvl = MIN(MAX(_level, 0.0), 1.0);
+	if (lvl > 0.0) {
+		CGFloat pad = lw + 2.0;
+		CGFloat fw = (bodyW - pad * 2.0) * lvl;
+		if (fw > 2.0) {
+			UIBezierPath *fill = [UIBezierPath bezierPathWithRoundedRect:
+				CGRectMake(lw / 2.0 + pad, bodyY + pad, fw, bodyH - pad * 2.0)
+				cornerRadius:(bodyH - pad * 2.0) * 0.4];
+			[[UIColor colorWithRed:0.2 green:0.85 blue:0.35 alpha:1.0] setFill];
+			[fill fill];
+		}
+	}
+}
+
+@end
+
 // ================= Вид острова =================
 typedef NS_ENUM(NSInteger, DIContentType) {
 	DIContentNone = 0,
@@ -221,6 +285,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) DIWaveView *compactWave;
 @property (nonatomic, strong) DILockIconView *cardLock;
 @property (nonatomic, strong) DILockIconView *compactLock;
+@property (nonatomic, strong) DIBatteryIconView *cardBattery;
+@property (nonatomic, strong) DIBatteryIconView *compactBattery;
+@property (nonatomic, assign) CGFloat batteryLevel;
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art;
 - (void)setLockOpen:(BOOL)open;
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated;
@@ -258,6 +325,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactLock = [[DILockIconView alloc] init];
 		_compactLock.hidden = YES;
 		[_compactContent addSubview:_compactLock];
+		_compactBattery = [[DIBatteryIconView alloc] init];
+		_compactBattery.hidden = YES;
+		[_compactContent addSubview:_compactBattery];
 
 		// --- слой карточки ---
 		_cardContent = [[UIView alloc] init];
@@ -277,6 +347,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_cardLock = [[DILockIconView alloc] init];
 		_cardLock.hidden = YES;
 		[_cardContent addSubview:_cardLock];
+		_cardBattery = [[DIBatteryIconView alloc] init];
+		_cardBattery.hidden = YES;
+		[_cardContent addSubview:_cardBattery];
 
 		_titleLabel = [[UILabel alloc] init];
 		_titleLabel.font = [UIFont boldSystemFontOfSize:15.0];
@@ -321,6 +394,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		[_compactWave stop];
 		_cardLock.hidden = YES;
 		_compactLock.hidden = YES;
+		_cardBattery.hidden = YES;
+		_compactBattery.hidden = YES;
 		[UIView animateWithDuration:0.25 animations:^{
 			self.liveDot.alpha = 0.0;
 			self.compactContent.alpha = 0.0;
@@ -337,6 +412,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactIcon.hidden = NO;
 		_compactLock.hidden = YES;
 		_cardLock.hidden = YES;
+		_cardBattery.hidden = YES;
+		_compactBattery.hidden = YES;
 		_compactWave.hidden = NO;
 	} else if (type == DIContentCall) {
 		_iconLabel.hidden = NO;
@@ -346,15 +423,30 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactIcon.hidden = NO;
 		_compactLock.hidden = YES;
 		_cardLock.hidden = YES;
+		_cardBattery.hidden = YES;
+		_compactBattery.hidden = YES;
+		[_compactWave stop];
+	} else if (type == DIContentCharging) { // зарядка — широкий бар с иконкой батареи
+		_iconLabel.hidden = YES;
+		_artworkView.hidden = YES;
+		_cardLock.hidden = YES;
+		_cardBattery.hidden = NO;
+		_cardBattery.level = _batteryLevel;
+		_compactIcon.hidden = YES;
+		_compactLock.hidden = YES;
+		_compactBattery.hidden = NO;
+		_compactBattery.level = _batteryLevel;
 		[_compactWave stop];
 	} else { // DIContentLock — рисованная иконка, не эмодзи
 		_iconLabel.hidden = YES;
 		_artworkView.hidden = YES;
 		_cardLock.hidden = NO;
 		_cardLock.open = NO;
+		_cardBattery.hidden = YES;
 		_compactIcon.hidden = YES;
 		_compactLock.hidden = NO;
 		_compactLock.open = NO;
+		_compactBattery.hidden = YES;
 		[_compactWave stop];
 	}
 	// Мгновенно показываем компакт, плавность — в схлопывании/раскрытии
@@ -369,7 +461,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 - (void)applyAlphasAnimated:(BOOL)animated {
 	BOOL has = _contentType != DIContentNone;
 	BOOL showCompact = has && !_expanded && _compactEnabled;
-	BOOL showDot = has && (!showCompact || _contentType == DIContentCall);
+	BOOL showDot = has && (!showCompact || _contentType == DIContentCall || _contentType == DIContentCharging);
 	void (^apply)(void) = ^{
 		self.cardContent.alpha = _expanded && has ? 1.0 : 0.0;
 		self.compactContent.alpha = showCompact ? 1.0 : 0.0;
@@ -410,6 +502,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	// Компакт: иконка слева, wave справа
 	_compactIcon.frame = CGRectMake(16, (kPillH - 24) / 2.0, 24, 24);
 	_compactLock.frame = _compactIcon.frame;
+	_compactBattery.frame = _compactIcon.frame;
 	_compactWave.frame = CGRectMake(W - 16 - 25, (kPillH - 16) / 2.0, 25, 16);
 	if (H <= kPillH + 1.0) return;
 	// Карточка: иконка слева, тексты справа
@@ -418,6 +511,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_artworkView.frame = CGRectMake(pad, iconY, iconSize, iconSize);
 	_iconLabel.frame = _artworkView.frame;
 	_cardLock.frame = _artworkView.frame;
+	_cardBattery.frame = _artworkView.frame;
 	CGFloat tx = pad + iconSize + 14.0, tw = W - tx - pad;
 	_titleLabel.frame = CGRectMake(tx, iconY + 4.0, tw, 22.0);
 	_subtitleLabel.frame = CGRectMake(tx, iconY + 28.0, tw, 20.0);
@@ -464,6 +558,10 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, copy) NSString *trackArtist;
 @property (nonatomic, strong) UIImage *trackArt;
 @property (nonatomic, assign) BOOL installed;
+@property (nonatomic, assign) BOOL chgActive;
+@property (nonatomic, assign) BOOL chgFull;
+@property (nonatomic, assign) CGFloat chgLevel;
+@property (nonatomic, assign) NSTimeInterval lastUnlock;
 + (instancetype)shared;
 - (void)install;
 @end
@@ -510,6 +608,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_island.compactEnabled = DICompactIcons;
 	[_islandWindow addSubview:_island];
 
+	[UIDevice currentDevice].batteryMonitoringEnabled = YES;
 	_pollTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self
 		selector:@selector(poll) userInfo:nil repeats:YES];
 	[[NSRunLoop mainRunLoop] addTimer:_pollTimer forMode:NSRunLoopCommonModes];
@@ -528,8 +627,17 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 - (void)onTap {
 	if (!DIEnabled) return;
-	// Пустая пилюля на тапы не реагирует — раскрытие только при активности
-	if (_island.contentType == DIContentNone) return;
+	// Пустая пилюля не раскрывается (только при активности), но пружинит
+	if (_island.contentType == DIContentNone) {
+		[UIView animateWithDuration:0.12 animations:^{
+			self.island.transform = CGAffineTransformMakeScale(1.06, 1.12);
+		} completion:^(BOOL f) {
+			[UIView animateWithDuration:0.25 animations:^{
+				self.island.transform = CGAffineTransformIdentity;
+			}];
+		}];
+		return;
+	}
 	[self setExpanded:!_island.expanded animated:YES];
 }
 
@@ -610,6 +718,14 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_trackArtist = [artist copy];
 	_trackArt = art;
 
+	// Батарея для анимации зарядки
+	UIDevice *dev = [UIDevice currentDevice];
+	_chgActive = (dev.batteryState == UIDeviceBatteryStateCharging
+		|| dev.batteryState == UIDeviceBatteryStateFull);
+	_chgFull = (dev.batteryState == UIDeviceBatteryStateFull);
+	_chgLevel = dev.batteryLevel;
+	_island.batteryLevel = _chgLevel;
+
 	[self refresh];
 }
 
@@ -618,6 +734,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)finishUnlock {
+	_islandWindow.windowLevel = UIWindowLevelAlert + 100;
 	[self refreshForce:YES];
 }
 
@@ -635,6 +752,23 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		t = _trackTitle ?: @"Музыка";
 		s = _trackArtist ?: @"Сейчас играет";
 		a = _trackArt;
+	} else if (DIShowCharging && _chgActive) {
+		want = DIContentCharging;
+		int pct = (int)round(MAX(_chgLevel, 0.0) * 100.0);
+		t = [NSString stringWithFormat:@"%d%%", pct];
+		s = _chgFull ? @"Заряжено" : @"Заряжается";
+	}
+	if (want == DIContentNone && DIFake) {
+		want = DIContentMedia;
+		t = @"Тестовый трек";
+		s = @"Фейк-активность для превью";
+		a = nil;
+	}
+	// Зарядка: проценты обновляем тихо, без перераскрытия
+	if (want == DIContentCharging && want == _island.contentType) {
+		_island.batteryLevel = _chgLevel;
+		[_island setContent:want title:t subtitle:s artwork:nil];
+		return;
 	}
 
 	BOOL contentChanged = (want != _island.contentType)
@@ -646,6 +780,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 			if (want == DIContentMedia) {
 				[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoCollapse) object:nil];
 				[self performSelector:@selector(autoCollapse) withObject:nil afterDelay:5.0];
+			} else if (want == DIContentCharging) {
+				[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoCollapse) object:nil];
+				[self performSelector:@selector(autoCollapse) withObject:nil afterDelay:4.0];
 			}
 		} else {
 			[self setExpanded:NO animated:YES];
@@ -670,12 +807,16 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	}
 	NSString *now = [tf stringFromDate:[NSDate date]];
 	[_island setContent:DIContentLock title:@"Заблокировано" subtitle:now artwork:nil];
+	_islandWindow.windowLevel = 100000; // поверх локскрина
 	[self setExpanded:YES animated:YES];
 }
 
 - (void)didUnlock {
 	// Разблокировка — замок morph'ится в открытый и остров схлопывается
 	if (!DIEnabled) return;
+	NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+	if (now - _lastUnlock < 1.2) return; // хук + нотификация дублируют событие
+	_lastUnlock = now;
 	[self haptic];
 	[_island setContent:DIContentLock title:@"Разблокировано" subtitle:@"" artwork:nil];
 	[_island setLockOpen:YES];
@@ -697,6 +838,18 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 @end
 
+// Локстейт через notify — дублирует хуки SBLockScreenManager на случай,
+// если селекторы не завелись на конкретной версии (state != 0 = заблокирован)
+static void DIWatchLockState(void) {
+	static int token = 0;
+	notify_register_dispatch("com.apple.springboard.lockstate", &token, dispatch_get_main_queue(), ^(int t) {
+		uint64_t state = 0;
+		notify_get_state(token, &state);
+		if (state) [[DIIslandManager shared] didLock];
+		else [[DIIslandManager shared] didUnlock];
+	});
+}
+
 // Замок/разблокировка (SBLockScreenManager есть на всех iOS 12–15)
 // ================= Точка входа =================
 %hook SBLockScreenManager
@@ -712,6 +865,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 %ctor {
 	DILoadPrefs();
+	DIWatchLockState();
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
 		DIPrefsCallback, CFSTR("com.listrise.dinapenis/prefs.changed"),
 		NULL, CFNotificationSuspensionBehaviorCoalesce);
