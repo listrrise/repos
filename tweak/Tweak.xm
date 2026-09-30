@@ -20,6 +20,7 @@ static CGFloat DIAnimSpeed = 1.0; // 0.5..1.5, 1.0 = норма
 static BOOL DISwipes = YES; // свайпы: влево — назад, вправо — вперёд
 static BOOL DIShowCharging = YES;
 static BOOL DIFake = NO; // фейк-активность для превью из настроек
+static BOOL DIShowVolume = YES;
 
 static void DILoadPrefs(void) {
 	NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:kDIPrefsPath];
@@ -34,6 +35,7 @@ static void DILoadPrefs(void) {
 	if (p[@"Swipes"])       DISwipes       = [p[@"Swipes"] boolValue];
 	if (p[@"ShowCharging"]) DIShowCharging = [p[@"ShowCharging"] boolValue];
 	if (p[@"FakeActivity"]) DIFake         = [p[@"FakeActivity"] boolValue];
+	if (p[@"ShowVolume"])   DIShowVolume   = [p[@"ShowVolume"] boolValue];
 }
 
 static void DIPrefsCallback(CFNotificationCenterRef center, void *observer,
@@ -261,6 +263,46 @@ static void DISendMediaCommand(NSInteger cmd) {
 
 @end
 
+// ================= Полоска громкости =================
+@interface DIVolumeBarView : UIView
+@property (nonatomic, assign) CGFloat level; // 0..1
+@end
+
+@implementation DIVolumeBarView
+
+- (instancetype)initWithFrame:(CGRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) {
+		self.backgroundColor = [UIColor clearColor];
+		self.opaque = NO;
+		_level = 0.0;
+	}
+	return self;
+}
+
+- (void)setLevel:(CGFloat)level {
+	_level = level;
+	[self setNeedsDisplay];
+}
+
+- (void)drawRect:(CGRect)rect {
+	CGFloat w = rect.size.width, h = rect.size.height;
+	CGFloat bh = MIN(10.0, h);
+	CGFloat by = (h - bh) / 2.0;
+	UIBezierPath *track = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, by, w, bh) cornerRadius:bh / 2.0];
+	[[UIColor colorWithWhite:1.0 alpha:0.25] setFill];
+	[track fill];
+	CGFloat lvl = MIN(MAX(_level, 0.0), 1.0);
+	CGFloat fw = w * lvl;
+	if (fw > 1.0) {
+		UIBezierPath *fill = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, by, MAX(fw, bh), bh) cornerRadius:bh / 2.0];
+		[[UIColor whiteColor] setFill];
+		[fill fill];
+	}
+}
+
+@end
+
 // ================= Вид острова =================
 typedef NS_ENUM(NSInteger, DIContentType) {
 	DIContentNone = 0,
@@ -268,6 +310,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	DIContentCall,
 	DIContentLock,
 	DIContentCharging,
+	DIContentVolume,
 };
 
 @interface DIIslandView : UIView
@@ -290,6 +333,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) DIBatteryIconView *cardBattery;
 @property (nonatomic, strong) DIBatteryIconView *compactBattery;
 @property (nonatomic, strong) UILabel *compactPct;
+@property (nonatomic, strong) DIVolumeBarView *cardVol;
+@property (nonatomic, strong) DIVolumeBarView *compactVol;
+@property (nonatomic, assign) CGFloat volumeLevel;
 @property (nonatomic, assign) CGFloat batteryLevel;
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art;
 - (void)setLockOpen:(BOOL)open;
@@ -336,6 +382,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactPct.textAlignment = NSTextAlignmentRight;
 		_compactPct.hidden = YES;
 		[_compactContent addSubview:_compactPct];
+		_compactVol = [[DIVolumeBarView alloc] init];
+		_compactVol.hidden = YES;
+		[_compactContent addSubview:_compactVol];
 
 		// --- слой карточки ---
 		_cardContent = [[UIView alloc] init];
@@ -358,6 +407,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_cardBattery = [[DIBatteryIconView alloc] init];
 		_cardBattery.hidden = YES;
 		[_cardContent addSubview:_cardBattery];
+		_cardVol = [[DIVolumeBarView alloc] init];
+		_cardVol.hidden = YES;
+		[_cardContent addSubview:_cardVol];
 
 		_titleLabel = [[UILabel alloc] init];
 		_titleLabel.font = [UIFont boldSystemFontOfSize:15.0];
@@ -411,6 +463,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_titleLabel.text = title ?: @"";
 	_subtitleLabel.text = sub ?: @"";
 	_compactPct.hidden = (type != DIContentCharging);
+	_titleLabel.hidden = (type == DIContentVolume);
+	_subtitleLabel.hidden = (type == DIContentVolume);
 	if (type == DIContentMedia) {
 		_iconLabel.hidden = (art != nil);
 		_artworkView.hidden = (art == nil);
@@ -444,6 +498,20 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactBattery.hidden = NO;
 		_compactBattery.level = _batteryLevel;
 		_compactPct.text = title; // title уже "82%"
+		[_compactWave stop];
+	} else if (type == DIContentVolume) { // громкость — просто полоска
+		_iconLabel.hidden = YES;
+		_artworkView.hidden = YES;
+		_cardLock.hidden = YES;
+		_cardBattery.hidden = YES;
+		_cardVol.hidden = NO;
+		_cardVol.level = _volumeLevel;
+		_compactIcon.hidden = YES;
+		_compactLock.hidden = YES;
+		_compactBattery.hidden = YES;
+		_compactPct.hidden = YES;
+		_compactVol.hidden = NO;
+		_compactVol.level = _volumeLevel;
 		[_compactWave stop];
 	} else { // DIContentLock — рисованная иконка, не эмодзи
 		_iconLabel.hidden = YES;
@@ -495,6 +563,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_compactBattery.frame = _compactIcon.frame;
 	_compactWave.frame = CGRectMake(W - 16 - 25, (kPillH - 16) / 2.0, 25, 16);
 	_compactPct.frame = CGRectMake(W - 16 - 44, (kPillH - 18) / 2.0, 44, 18);
+	_compactVol.frame = CGRectMake(W - 16 - 60, (kPillH - 6) / 2.0, 60, 6);
 	if (H <= kPillH + 1.0) return;
 	// Карточка: иконка слева, тексты справа
 	CGFloat pad = 18.0, iconSize = 56.0;
@@ -503,6 +572,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_iconLabel.frame = _artworkView.frame;
 	_cardLock.frame = _artworkView.frame;
 	_cardBattery.frame = _artworkView.frame;
+	_cardVol.frame = CGRectMake(pad, (H - 10.0) / 2.0, W - pad * 2.0, 10.0);
 	CGFloat tx = pad + iconSize + 14.0, tw = W - tx - pad;
 	_titleLabel.frame = CGRectMake(tx, iconY + 4.0, tw, 22.0);
 	_subtitleLabel.frame = CGRectMake(tx, iconY + 28.0, tw, 20.0);
@@ -586,6 +656,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) UIImageView *miniArt;
 @property (nonatomic, strong) DIBatteryIconView *miniBattery;
 @property (nonatomic, strong) UIView *privacyDot;
+@property (nonatomic, assign) BOOL volPrevExpanded;
 + (instancetype)shared;
 - (void)install;
 - (void)layoutOverlaysAnimated:(BOOL)animated;
@@ -668,6 +739,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_islandWindow.dotView = _privacyDot;
 
 	[UIDevice currentDevice].batteryMonitoringEnabled = YES;
+	AVAudioSession *sess = [AVAudioSession sharedInstance];
+	[sess addObserver:self forKeyPath:@"outputVolume" options:NSKeyValueObservingOptionNew context:NULL];
 	_pollTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self
 		selector:@selector(poll) userInfo:nil repeats:YES];
 	[[NSRunLoop mainRunLoop] addTimer:_pollTimer forMode:NSRunLoopCommonModes];
@@ -804,7 +877,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)refreshForce:(BOOL)force {
-	if (!force && _island.contentType == DIContentLock) return; // замком управляют didLock/didUnlock
+	if (!force && (_island.contentType == DIContentLock || _island.contentType == DIContentVolume)) return;
 	// Мультиактивность по приоритету: звонок > музыка > зарядка
 	NSMutableArray *acts = [NSMutableArray array];
 	if (DIShowCalls && _hasCall) [acts addObject:@(DIContentCall)];
@@ -877,12 +950,43 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	}
 }
 
-- (void)didLock {
-	// Экран заблокировали: активность уходит в мини, замок — мини-индикатор
-	if (!DIEnabled) return;
-	_locked = YES;
-	_camActive = NO;
-	_micActive = NO;
+- (void)observeValueForKeyPath:(NSString *)path ofObject:(id)obj change:(NSDictionary *)ch context:(void *)ctx {
+	if ([path isEqualToString:@"outputVolume"]) {
+		dispatch_async(dispatch_get_main_queue(), ^{ [self showVolumeHUD]; });
+		return;
+	}
+	[super observeValueForKeyPath:path ofObject:obj change:ch context:ctx];
+}
+
+- (void)showVolumeHUD {
+	// Громкость: широкий бар с полоской на 0.8 сек, затем возврат как было
+	if (!DIEnabled || !DIShowVolume) return;
+	float lvl = [[AVAudioSession sharedInstance] outputVolume];
+	if (_island.contentType != DIContentVolume) {
+		_volPrevExpanded = _island.expanded;
+	}
+	_island.volumeLevel = lvl;
+	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideVolumeHUD) object:nil];
+	[_island setContent:DIContentVolume title:@"" subtitle:@"" artwork:nil];
+	[self setExpanded:YES animated:YES];
+	[self performSelector:@selector(hideVolumeHUD) withObject:nil afterDelay:0.8];
+}
+
+- (void)hideVolumeHUD {
+	if (_locked) {
+		[self showLockContent];
+		[self setExpanded:NO animated:YES];
+	} else {
+		_noAutoExpand = YES;
+		[self refreshForce:YES];
+		_noAutoExpand = NO;
+		BOOL keepOpen = (_volPrevExpanded && _island.contentType != DIContentNone);
+		[self setExpanded:keepOpen animated:YES];
+	}
+	[self layoutOverlaysAnimated:NO];
+}
+
+- (void)showLockContent {
 	static NSDateFormatter *tf = nil;
 	if (!tf) {
 		tf = [[NSDateFormatter alloc] init];
@@ -890,6 +994,15 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	}
 	NSString *now = [tf stringFromDate:[NSDate date]];
 	[_island setContent:DIContentLock title:@"Заблокировано" subtitle:now artwork:nil];
+}
+
+- (void)didLock {
+	// Экран заблокировали: активность уходит в мини, замок — мини-индикатор
+	if (!DIEnabled) return;
+	_locked = YES;
+	_camActive = NO;
+	_micActive = NO;
+	[self showLockContent];
 	_islandWindow.windowLevel = 100000; // поверх локскрина
 	[self setExpanded:NO animated:YES];
 	[self layoutOverlaysAnimated:NO];
