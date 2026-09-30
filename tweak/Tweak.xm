@@ -881,6 +881,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	// Экран заблокировали: активность уходит в мини, замок — мини-индикатор
 	if (!DIEnabled) return;
 	_locked = YES;
+	_camActive = NO;
+	_micActive = NO;
 	static NSDateFormatter *tf = nil;
 	if (!tf) {
 		tf = [[NSDateFormatter alloc] init];
@@ -1028,30 +1030,59 @@ static BOOL DIIsSpringBoard(void) {
 // Репорт камеры/микрофона из процессов приложений:
 // в SpringBoard чужую активность сенсоров не видно, поэтому приложения
 // шлют состояние через notify (state), SpringBoard слушает.
-static int DICamCount = 0;
+static NSHashTable *DICamSessions = nil;
 static BOOL DIMicOn = NO;
 
 static void DIReportSensors(void) {
 	int t = 0;
 	notify_register_check("com.listrise.dinapenis.cam", &t);
-	notify_set_state(t, DICamCount > 0 ? 1 : 0);
+	notify_set_state(t, (DICamSessions && DICamSessions.count > 0) ? 1 : 0);
 	notify_post("com.listrise.dinapenis.cam");
 	notify_register_check("com.listrise.dinapenis.mic", &t);
 	notify_set_state(t, DIMicOn ? 1 : 0);
 	notify_post("com.listrise.dinapenis.mic");
 }
 
+// Трекинг сессий через нотификации + сброс при сворачивании,
+// иначе точка залипает (stopRunning при сворачивании зовётся не всегда)
+static void DIAppSensorSetup(void) {
+	DICamSessions = [NSHashTable weakObjectsHashTable];
+	NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+	NSOperationQueue *mq = [NSOperationQueue mainQueue];
+	[nc addObserverForName:AVCaptureSessionDidStartRunningNotification object:nil queue:mq usingBlock:^(NSNotification *n) {
+		if (n.object) [DICamSessions addObject:n.object];
+		DIReportSensors();
+	}];
+	[nc addObserverForName:AVCaptureSessionDidStopRunningNotification object:nil queue:mq usingBlock:^(NSNotification *n) {
+		if (n.object) [DICamSessions removeObject:n.object];
+		DIReportSensors();
+	}];
+	[nc addObserverForName:AVCaptureSessionWasInterruptedNotification object:nil queue:mq usingBlock:^(NSNotification *n) {
+		if (n.object) [DICamSessions removeObject:n.object];
+		DIReportSensors();
+	}];
+	[nc addObserverForName:AVCaptureSessionInterruptionEndedNotification object:nil queue:mq usingBlock:^(NSNotification *n) {
+		if (n.object) [DICamSessions addObject:n.object];
+		DIReportSensors();
+	}];
+	[nc addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:mq usingBlock:^(NSNotification *n) {
+		[DICamSessions removeAllObjects];
+		DIMicOn = NO;
+		DIReportSensors();
+	}];
+}
+
 %hook AVCaptureSession
 - (void)startRunning {
 	%orig;
 	if (DIIsSpringBoard()) return;
-	DICamCount++;
+	if (self && DICamSessions) [DICamSessions addObject:self];
 	DIReportSensors();
 }
 - (void)stopRunning {
 	%orig;
 	if (DIIsSpringBoard()) return;
-	if (DICamCount > 0) DICamCount--;
+	if (self && DICamSessions) [DICamSessions removeObject:self];
 	DIReportSensors();
 }
 %end
@@ -1111,7 +1142,7 @@ static void DIWatchSensors(void) {
 %ctor {
 	// В приложениях грузимся только ради репорта камеры/микрофона,
 	// весь остров живёт строго в SpringBoard.
-	if (!DIIsSpringBoard()) return;
+	if (!DIIsSpringBoard()) { DIAppSensorSetup(); return; }
 	DILoadPrefs();
 	DIWatchLockState();
 	DIWatchSensors();
