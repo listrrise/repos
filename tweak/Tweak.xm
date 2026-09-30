@@ -21,6 +21,7 @@ static BOOL DISwipes = YES; // свайпы: влево — назад, впра
 static BOOL DIShowCharging = YES;
 static BOOL DIFake = NO; // фейк-активность для превью из настроек
 static BOOL DIShowVolume = YES;
+static BOOL DIShowTorch = YES;
 
 static void DILoadPrefs(void) {
 	NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:kDIPrefsPath];
@@ -36,6 +37,7 @@ static void DILoadPrefs(void) {
 	if (p[@"ShowCharging"]) DIShowCharging = [p[@"ShowCharging"] boolValue];
 	if (p[@"FakeActivity"]) DIFake         = [p[@"FakeActivity"] boolValue];
 	if (p[@"ShowVolume"])   DIShowVolume   = [p[@"ShowVolume"] boolValue];
+	if (p[@"ShowTorch"])    DIShowTorch    = [p[@"ShowTorch"] boolValue];
 }
 
 static void DIPrefsCallback(CFNotificationCenterRef center, void *observer,
@@ -311,6 +313,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	DIContentLock,
 	DIContentCharging,
 	DIContentVolume,
+	DIContentTorch,
 };
 
 @interface DIIslandView : UIView
@@ -334,6 +337,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) DIBatteryIconView *compactBattery;
 @property (nonatomic, strong) UILabel *compactPct;
 @property (nonatomic, strong) DIVolumeBarView *cardVol;
+@property (nonatomic, strong) UISlider *torchSlider;
+@property (nonatomic, assign) CGFloat torchLevel;
 @property (nonatomic, strong) DIVolumeBarView *compactVol;
 @property (nonatomic, assign) CGFloat volumeLevel;
 @property (nonatomic, assign) CGFloat batteryLevel;
@@ -410,6 +415,15 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_cardVol = [[DIVolumeBarView alloc] init];
 		_cardVol.hidden = YES;
 		[_cardContent addSubview:_cardVol];
+		_torchSlider = [[UISlider alloc] init];
+		_torchSlider.minimumValue = 0.0;
+		_torchSlider.maximumValue = AVCaptureMaxAvailableTorchLevel;
+		_torchSlider.value = AVCaptureMaxAvailableTorchLevel;
+		_torchSlider.minimumTrackTintColor = [UIColor whiteColor];
+		_torchSlider.maximumTrackTintColor = [UIColor colorWithWhite:1.0 alpha:0.3];
+		[_torchSlider addTarget:self action:@selector(torchSliderChanged) forControlEvents:UIControlEventValueChanged];
+		_torchSlider.hidden = YES;
+		[_cardContent addSubview:_torchSlider];
 
 		_titleLabel = [[UILabel alloc] init];
 		_titleLabel.font = [UIFont boldSystemFontOfSize:15.0];
@@ -447,6 +461,10 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	[[NSNotificationCenter defaultCenter] postNotificationName:@"DIIslandSwipeRight" object:nil];
 }
 
+- (void)torchSliderChanged {
+	[[NSNotificationCenter defaultCenter] postNotificationName:@"DITorchLevel" object:@(_torchSlider.value)];
+}
+
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art {
 	_contentType = type;
 	if (type == DIContentNone) {
@@ -465,6 +483,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_compactPct.hidden = (type != DIContentCharging);
 	_titleLabel.hidden = (type == DIContentVolume);
 	_subtitleLabel.hidden = (type == DIContentVolume);
+	_torchSlider.hidden = (type != DIContentTorch);
+	_cardVol.hidden = (type != DIContentVolume);
+	_compactVol.hidden = (type != DIContentVolume);
 	if (type == DIContentMedia) {
 		_iconLabel.hidden = (art != nil);
 		_artworkView.hidden = (art == nil);
@@ -512,6 +533,21 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactPct.hidden = YES;
 		_compactVol.hidden = NO;
 		_compactVol.level = _volumeLevel;
+		[_compactWave stop];
+	} else if (type == DIContentTorch) { // фонарик
+		_iconLabel.hidden = NO;
+		_iconLabel.text = @"🔦";
+		_artworkView.hidden = YES;
+		_cardLock.hidden = YES;
+		_cardBattery.hidden = YES;
+		_cardVol.hidden = YES;
+		_compactIcon.hidden = NO;
+		_compactIcon.text = @"🔦";
+		_compactLock.hidden = YES;
+		_compactBattery.hidden = YES;
+		_compactPct.hidden = YES;
+		_compactVol.hidden = YES;
+		_torchSlider.value = _torchLevel;
 		[_compactWave stop];
 	} else { // DIContentLock — рисованная иконка, не эмодзи
 		_iconLabel.hidden = YES;
@@ -573,6 +609,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_cardLock.frame = _artworkView.frame;
 	_cardBattery.frame = _artworkView.frame;
 	_cardVol.frame = CGRectMake(pad, (H - 10.0) / 2.0, W - pad * 2.0, 10.0);
+	_torchSlider.frame = CGRectMake(tx, H - 52.0, tw, 30.0);
 	CGFloat tx = pad + iconSize + 14.0, tw = W - tx - pad;
 	_titleLabel.frame = CGRectMake(tx, iconY + 4.0, tw, 22.0);
 	_subtitleLabel.frame = CGRectMake(tx, iconY + 28.0, tw, 20.0);
@@ -657,6 +694,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) DIBatteryIconView *miniBattery;
 @property (nonatomic, strong) UIView *privacyDot;
 @property (nonatomic, assign) BOOL volPrevExpanded;
+@property (nonatomic, assign) BOOL torchOn;
+@property (nonatomic, assign) CGFloat torchLevel;
+@property (nonatomic, assign) float lastVolume;
 + (instancetype)shared;
 - (void)install;
 - (void)layoutOverlaysAnimated:(BOOL)animated;
@@ -685,6 +725,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 			name:@"DIIslandSwipeLeft" object:nil];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onSwipeRight)
 			name:@"DIIslandSwipeRight" object:nil];
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onTorchLevel:)
+			name:@"DITorchLevel" object:nil];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onRotate)
 			name:UIApplicationDidChangeStatusBarOrientationNotification object:nil];
 	}
@@ -735,7 +777,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_privacyDot = [[UIView alloc] initWithFrame:CGRectZero];
 	_privacyDot.layer.cornerRadius = 5.0;
 	_privacyDot.alpha = 0.0;
-	[_islandWindow addSubview:_privacyDot];
+	[_islandWindow insertSubview:_privacyDot belowSubview:_island];
 	_islandWindow.dotView = _privacyDot;
 
 	[UIDevice currentDevice].batteryMonitoringEnabled = YES;
@@ -751,7 +793,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_islandWindow.frame = [UIScreen mainScreen].bounds;
 	if (_island.expanded) {
 		DIContentType t = _island.contentType;
-		_island.frame = DICardFrame((t == DIContentMedia) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0));
+		_island.frame = DICardFrame((t == DIContentMedia || t == DIContentTorch) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0));
 	} else {
 		_island.frame = DIPillFrame();
 	}
@@ -799,7 +841,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {
 	DIContentType t = _island.contentType;
 	// Замок — широкий низкий бар, а не высокая карточка
-	CGFloat h = (t == DIContentMedia) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0);
+	CGFloat h = (t == DIContentMedia || t == DIContentTorch) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0);
 	CGRect target = expanded ? DICardFrame(h) : DIPillFrame();
 	_island.compactEnabled = DICompactIcons;
 	if (expanded) [self haptic];
@@ -859,6 +901,31 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_chgLevel = dev.batteryLevel;
 	_island.batteryLevel = _chgLevel;
 
+	// Фонарик (читаем железо напрямую — работает из SpringBoard)
+	BOOL torchOn = NO;
+	float torchLvl = 0.0f;
+	@try {
+		AVCaptureDevice *cam = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+		if (cam && [cam hasTorch]) {
+			torchOn = (cam.torchMode == AVCaptureTorchModeOn);
+			torchLvl = cam.torchLevel;
+		}
+	} @catch (__unused NSException *e) {}
+	_torchOn = torchOn;
+	_torchLevel = torchLvl;
+	_island.torchLevel = torchLvl;
+
+	// Громкость: опрос в дополнение к KVO (если KVO молчит)
+	@try {
+		float v = [[AVAudioSession sharedInstance] outputVolume];
+		if (_lastVolume < 0.0f) {
+			_lastVolume = v;
+		} else if (v != _lastVolume) {
+			_lastVolume = v;
+			[self showVolumeHUD];
+		}
+	} @catch (__unused NSException *e) {}
+
 	[self refresh];
 }
 
@@ -883,6 +950,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	if (DIShowCalls && _hasCall) [acts addObject:@(DIContentCall)];
 	if (DIShowMedia && _mediaPlaying) [acts addObject:@(DIContentMedia)];
 	else if (DIShowCharging && _chgActive) [acts addObject:@(DIContentCharging)];
+	else if (DIShowTorch && _torchOn) [acts addObject:@(DIContentTorch)];
 	if (acts.count == 0 && DIFake) [acts addObject:@(DIContentMedia)];
 	NSString *key = [acts componentsJoinedByString:@","];
 	if (![key isEqualToString:_lastActKey ?: @""]) { _swapped = NO; _lastActKey = [key copy]; }
@@ -912,10 +980,15 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		int pct = (int)round(MAX(_chgLevel, 0.0) * 100.0);
 		t = [NSString stringWithFormat:@"%d%%", pct];
 		s = _chgFull ? @"Заряжено" : @"Заряжается";
+	} else if (primary == DIContentTorch) {
+		t = @"Фонарик";
+		int bpct = (int)round(_torchLevel * 100.0);
+		s = [NSString stringWithFormat:@"Яркость %d%%", bpct];
 	}
-	// Зарядка: проценты обновляем тихо, без перераскрытия
-	if (primary == DIContentCharging && primary == _island.contentType) {
+	// Зарядка и фонарик: значения обновляем тихо, без перераскрытия
+	if ((primary == DIContentCharging || primary == DIContentTorch) && primary == _island.contentType) {
 		_island.batteryLevel = _chgLevel;
+		_island.torchLevel = _torchLevel;
 		[_island setContent:primary title:t subtitle:s artwork:nil];
 		[self layoutOverlaysAnimated:NO];
 		return;
@@ -931,7 +1004,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 			if (primary == DIContentMedia) {
 				[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoCollapse) object:nil];
 				[self performSelector:@selector(autoCollapse) withObject:nil afterDelay:5.0];
-			} else if (primary == DIContentCharging) {
+			} else if (primary == DIContentCharging || primary == DIContentTorch) {
 				[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoCollapse) object:nil];
 				[self performSelector:@selector(autoCollapse) withObject:nil afterDelay:4.0];
 			}
@@ -1059,6 +1132,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	} else if (_secondary == DIContentCharging) {
 		_miniBattery.hidden = NO; _miniBattery.level = _chgLevel;
 		_miniIcon.hidden = YES; _miniArt.hidden = YES;
+	} else if (_secondary == DIContentTorch) {
+		_miniIcon.hidden = NO; _miniIcon.text = @"🔦";
+		_miniArt.hidden = YES; _miniBattery.hidden = YES;
 	}
 	void (^apply)(void) = ^{
 		self.miniView.frame = CGRectMake(CGRectGetMaxX(pill) + 8.0, pill.origin.y, 37.0, 37.0);
@@ -1083,9 +1159,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	if (on) {
 		alpha = 1.0;
 		if (_island.expanded) {
-			// Вылезает слева из раскрытой карточки
+			// Активность есть: точка выглядывает слева из-за острова
 			CGFloat cy = CGRectGetMidY(_island.frame);
-			f = CGRectMake(_island.frame.origin.x - 14.0, cy - 5.0, 10.0, 10.0);
+			f = CGRectMake(_island.frame.origin.x - 5.0, cy - 5.0, 10.0, 10.0);
 		} else {
 			// Нет активности — рисуем прямо на острове (внутри пилюли слева)
 			CGRect pill = _island.frame;
@@ -1094,6 +1170,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	}
 	_island.privacyOn = on;
 	[_island setNeedsLayout];
+	if (on && _island.expanded) [_islandWindow insertSubview:_privacyDot belowSubview:_island];
+	else if (on) [_islandWindow bringSubviewToFront:_privacyDot];
 	BOOL popping = (on && _privacyDot.alpha < 0.5);
 	if (popping) _privacyDot.transform = CGAffineTransformMakeScale(0.1, 0.1);
 	_privacyDot.backgroundColor = c;
@@ -1109,6 +1187,28 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	} else {
 		apply();
 	}
+}
+
+- (void)onTorchLevel:(NSNotification *)n {
+	float lvl = [n.object floatValue];
+	[self setTorchOn:(lvl > 0.02) level:lvl];
+}
+
+- (void)setTorchOn:(BOOL)on level:(float)lvl {
+	@try {
+		AVCaptureDevice *cam = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+		if (cam && [cam hasTorch] && [cam lockForConfiguration:nil]) {
+			if (on) {
+				float max = AVCaptureMaxAvailableTorchLevel;
+				[cam setTorchModeOnWithLevel:MIN(MAX(lvl, 0.05f), max) error:nil];
+			} else {
+				cam.torchMode = AVCaptureTorchModeOff;
+			}
+			[cam unlockForConfiguration];
+		}
+	} @catch (__unused NSException *e) {}
+	_torchLevel = lvl;
+	_island.torchLevel = lvl;
 }
 
 #pragma mark - CXCallObserverDelegate
