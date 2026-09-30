@@ -272,7 +272,6 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactIcon.text = @"🔒";
 		[_compactWave stop];
 	}
-	}
 	// Мгновенно показываем компакт, плавность — в схлопывании/раскрытии
 	[self applyAlphasAnimated:NO];
 }
