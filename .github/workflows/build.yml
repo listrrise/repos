@@ -24,6 +24,12 @@ jobs:
       - name: Build rootless .deb
         run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
 
+      - name: Build gestures .debs
+        run: |
+          make -C gestures package FINALPACKAGE=1
+          make -C gestures package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+          cp gestures/packages/*.deb packages/
+
       - uses: actions/upload-artifact@v4
         with:
           name: debs

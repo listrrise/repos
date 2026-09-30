@@ -1,0 +1,9 @@
+Package: com.listrise.dinagestures
+Name: dinagestures
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Жесты iPhone X и полоска-индикатор
+Maintainer: listrise
+Author: listrise
+Section: Any iOS
+Depends: mobilesubstrate

@@ -20,15 +20,15 @@ for alg in ("md5", "sha1", "sha256"):
         entries[alg].append((h.hexdigest(), os.path.getsize(p), f))
 
 lines = [
-    "Origin: listrrise",
-    "Label: listrrise",
+    "Origin: listrise",
+    "Label: listrise",
     "Suite: stable",
     "Version: 1.0",
     "Codename: ios",
     "Date: " + formatdate(timeval=None, localtime=False, usegmt=True),
     "Architectures: iphoneos-arm iphoneos-arm64",
     "Components: main",
-    "Description: listrrise repo (dinapenis, iOS 12-15)",
+    "Description: listrise repo (dinapenis, iOS 12-15)",
 ]
 for alg, label in (("md5", "MD5Sum"), ("sha1", "SHA1"), ("sha256", "SHA256")):
     lines.append(label + ":")

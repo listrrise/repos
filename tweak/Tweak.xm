@@ -5,8 +5,8 @@
 #include <dlfcn.h>
 
 // ================= Prefs =================
-static NSString *const kDIPrefsPath = @"/var/mobile/Library/Preferences/com.listrrise.dinapenis.plist";
-static NSString *const kDIPrefsChanged = @"com.listrrise.dinapenis/prefs.changed";
+static NSString *const kDIPrefsPath = @"/var/mobile/Library/Preferences/com.listrise.dinapenis.plist";
+static NSString *const kDIPrefsChanged = @"com.listrise.dinapenis/prefs.changed";
 
 static BOOL DIEnabled = YES;
 static BOOL DIShowMedia = YES;
@@ -623,7 +623,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 %ctor {
 	DILoadPrefs();
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-		DIPrefsCallback, CFSTR("com.listrrise.dinapenis/prefs.changed"),
+		DIPrefsCallback, CFSTR("com.listrise.dinapenis/prefs.changed"),
 		NULL, CFNotificationSuspensionBehaviorCoalesce);
 
 	[[NSNotificationCenter defaultCenter] addObserverForName:UIWindowDidBecomeKeyNotification

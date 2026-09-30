@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>listrrise repo</title>
+<title>listrise repo</title>
 <style>
 body { font-family: -apple-system, sans-serif; text-align: center; padding: 24px 16px; background: #000; color: #fff; }
 a.btn { display: inline-block; margin: 8px; padding: 12px 28px; border-radius: 24px;
@@ -23,7 +23,7 @@ a.btn { display: inline-block; margin: 8px; padding: 12px 28px; border-radius: 2
 </style>
 </head>
 <body>
-<h1><img src="CydiaIcon.png" width="72" style="border-radius:18px; vertical-align:middle"> listrrise repo</h1>
+<h1><img src="CydiaIcon.png" width="72" style="border-radius:18px; vertical-align:middle"> listrise repo</h1>
 <p class="muted">Твики для iOS • выбери свою версию</p>
 <p>
   <a class="btn" href="sileo://source/https://listrrise.github.io/repos/">Добавить в Sileo</a>
@@ -39,8 +39,11 @@ a.btn { display: inline-block; margin: 8px; padding: 12px 28px; border-radius: 2
 <script>
 var pkgs = [
   { name: "dinapenis", ver: "0.2.0",
-    desc: "Dynamic Island + виджеты домашнего экрана. Остров с музыкой и звонками, свайпы треков, виджеты часов/батареи/музыки.",
-    fw: ["12-15", "12+", "any"], section: "Tweaks (iOS 12-15)" }
+    desc: "Dynamic Island как на iPhone 14 Pro: остров, музыка, звонки, свайпы треков, локскрин.",
+    fw: ["12-15", "12+", "any"], section: "Tweaks (iOS 12-15)" },
+  { name: "dinagestures", ver: "0.1.0",
+    desc: "Жесты iPhone X: полоска-индикатор, свайп вверх = домой, подъём контента.",
+    fw: ["15+", "12+", "any"], section: "Any iOS" }
 ];
 var labels = { "12-15": "iOS 12–15", "15+": "iOS 15+", "12+": "iOS 12+", "any": "Any iOS" };
 function render(tab) {

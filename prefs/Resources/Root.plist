@@ -18,13 +18,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>Enabled</string>
 			<key>label</key>
 			<string>Включено</string>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -32,13 +32,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>ShowMedia</string>
 			<key>label</key>
 			<string>Музыка (Now Playing)</string>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -46,13 +46,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>ShowCalls</string>
 			<key>label</key>
 			<string>Звонки</string>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -68,13 +68,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>CompactIcons</string>
 			<key>label</key>
 			<string>Компактные иконки</string>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -82,13 +82,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>Haptics</string>
 			<key>label</key>
 			<string>Вибрация при раскрытии</string>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -100,7 +100,7 @@
 			<key>cell</key>
 			<string>PSSliderCell</string>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>TopOffset</string>
 			<key>label</key>
@@ -114,13 +114,13 @@
 			<key>showValue</key>
 			<true/>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSliderCell</string>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>AnimSpeed</string>
 			<key>label</key>
@@ -134,7 +134,7 @@
 			<key>showValue</key>
 			<true/>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -150,13 +150,81 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.listrrise.dinapenis</string>
+			<string>com.listrise.dinapenis</string>
 			<key>key</key>
 			<string>Swipes</string>
 			<key>label</key>
 			<string>Свайпы влево/вправо</string>
 			<key>PostNotification</key>
-			<string>com.listrrise.dinapenis/prefs.changed</string>
+			<string>com.listrise.dinapenis/prefs.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Жесты iPhone X</string>
+			<key>footerText</key>
+			<string>Полоска снизу и свайп вверх = домой (отдельный твик dinagestures). Применяются сразу.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.listrise.dinapenis</string>
+			<key>key</key>
+			<string>GestureEnabled</string>
+			<key>label</key>
+			<string>Жесты включены</string>
+			<key>PostNotification</key>
+			<string>com.listrise.dinapenis/prefs.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSListCell</string>
+			<key>defaults</key>
+			<string>com.listrise.dinapenis</string>
+			<key>key</key>
+			<string>BarColor</string>
+			<key>label</key>
+			<string>Цвет полоски</string>
+			<key>default</key>
+			<integer>0</integer>
+			<key>validTitles</key>
+			<array>
+				<string>Авто</string>
+				<string>Белая</string>
+				<string>Чёрная</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+				<integer>2</integer>
+			</array>
+			<key>PostNotification</key>
+			<string>com.listrise.dinapenis/prefs.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.listrise.dinapenis</string>
+			<key>key</key>
+			<string>BottomInset</string>
+			<key>label</key>
+			<string>Подъём контента</string>
+			<key>min</key>
+			<real>0</real>
+			<key>max</key>
+			<real>34</real>
+			<key>default</key>
+			<real>20</real>
+			<key>showValue</key>
+			<true/>
+			<key>PostNotification</key>
+			<string>com.listrise.dinapenis/prefs.changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
