@@ -302,6 +302,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		self.backgroundColor = [UIColor blackColor];
 		self.layer.cornerRadius = kPillH / 2.0;
 		self.layer.masksToBounds = YES;
+		// Тонкая светлая окантовка — остров видно и на чёрном фоне
+		self.layer.borderWidth = 1.5;
+		self.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.25].CGColor;
 		self.userInteractionEnabled = YES;
 		_compactEnabled = YES;
 
