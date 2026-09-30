@@ -2,6 +2,11 @@
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 
+// suspend — приватный метод UIApplication (сворачивает приложение)
+@interface UIApplication (DGPrivate)
+- (void)suspend;
+@end
+
 // Жесты iPhone X отдельным твиком:
 //  - полоска-индикатор снизу (только SpringBoard, поверх приложений),
 //  - свайп вверх от нижнего края = домой (в каждом приложении),

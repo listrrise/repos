@@ -130,6 +130,72 @@ static void DISendMediaCommand(NSInteger cmd) {
 
 @end
 
+// ================= Замок иконкой (рисуем сами, не эмодзи) =================
+@interface DILockIconView : UIView
+@property (nonatomic, assign) BOOL open; // открытый замок для анимации разблокировки
+@end
+
+@implementation DILockIconView
+
+- (instancetype)initWithFrame:(CGRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) {
+		self.backgroundColor = [UIColor clearColor];
+		self.opaque = NO;
+	}
+	return self;
+}
+
+- (void)setOpen:(BOOL)open {
+	_open = open;
+	[self setNeedsDisplay];
+}
+
+- (void)drawRect:(CGRect)rect {
+	CGFloat w = rect.size.width, h = rect.size.height;
+	UIColor *white = [UIColor whiteColor];
+	CGFloat lw = w * 0.15;
+	CGFloat r = w * 0.25;
+	CGPoint c = CGPointMake(w / 2.0, h * 0.40);
+	CGFloat bodyTop = h * 0.40;
+
+	[white setStroke];
+	// Ножки дужки (у открытого — только левая)
+	UIBezierPath *legs = [UIBezierPath bezierPath];
+	[legs moveToPoint:CGPointMake(c.x - r, c.y)];
+	[legs addLineToPoint:CGPointMake(c.x - r, bodyTop + lw * 0.4)];
+	if (!_open) {
+		[legs moveToPoint:CGPointMake(c.x + r, c.y)];
+		[legs addLineToPoint:CGPointMake(c.x + r, bodyTop + lw * 0.4)];
+	}
+	legs.lineWidth = lw;
+	[legs stroke];
+	// Дуга (у открытого с разрывом справа)
+	UIBezierPath *arc = [UIBezierPath bezierPath];
+	if (!_open) {
+		[arc addArcWithCenter:c radius:r startAngle:M_PI endAngle:0.0 clockwise:YES];
+	} else {
+		[arc addArcWithCenter:c radius:r startAngle:M_PI endAngle:-M_PI * 0.25 clockwise:YES];
+	}
+	arc.lineWidth = lw;
+	arc.lineCapStyle = kCGLineCapRound;
+	[arc stroke];
+	// Корпус
+	CGFloat bw = w * 0.58, bh = h * 0.50;
+	CGRect body = CGRectMake((w - bw) / 2.0, bodyTop, bw, bh);
+	UIBezierPath *bp = [UIBezierPath bezierPathWithRoundedRect:body cornerRadius:bw * 0.20];
+	[white setFill];
+	[bp fill];
+	// Скважина
+	CGFloat kr = w * 0.055;
+	UIBezierPath *key = [UIBezierPath bezierPathWithArcCenter:CGPointMake(w / 2.0, bodyTop + bh * 0.38)
+		radius:kr startAngle:0.0 endAngle:2.0 * M_PI clockwise:YES];
+	[[UIColor blackColor] setFill];
+	[key fill];
+}
+
+@end
+
 // ================= Вид острова =================
 typedef NS_ENUM(NSInteger, DIContentType) {
 	DIContentNone = 0,
@@ -153,8 +219,10 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) UIView *compactContent;
 @property (nonatomic, strong) UILabel *compactIcon;
 @property (nonatomic, strong) DIWaveView *compactWave;
+@property (nonatomic, strong) DILockIconView *cardLock;
+@property (nonatomic, strong) DILockIconView *compactLock;
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art;
-- (void)setCardIcon:(NSString *)icon;
+- (void)setLockOpen:(BOOL)open;
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated;
 @end
 
@@ -187,6 +255,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 		_compactWave = [[DIWaveView alloc] init];
 		[_compactContent addSubview:_compactWave];
+		_compactLock = [[DILockIconView alloc] init];
+		_compactLock.hidden = YES;
+		[_compactContent addSubview:_compactLock];
 
 		// --- слой карточки ---
 		_cardContent = [[UIView alloc] init];
@@ -203,6 +274,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_iconLabel.font = [UIFont systemFontOfSize:30.0];
 		_iconLabel.textAlignment = NSTextAlignmentCenter;
 		[_cardContent addSubview:_iconLabel];
+		_cardLock = [[DILockIconView alloc] init];
+		_cardLock.hidden = YES;
+		[_cardContent addSubview:_cardLock];
 
 		_titleLabel = [[UILabel alloc] init];
 		_titleLabel.font = [UIFont boldSystemFontOfSize:15.0];
@@ -245,6 +319,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	if (type == DIContentNone) {
 		[self stopPulse];
 		[_compactWave stop];
+		_cardLock.hidden = YES;
+		_compactLock.hidden = YES;
 		[UIView animateWithDuration:0.25 animations:^{
 			self.liveDot.alpha = 0.0;
 			self.compactContent.alpha = 0.0;
@@ -258,27 +334,36 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_artworkView.hidden = (art == nil);
 		_artworkView.image = art;
 		_compactIcon.text = @"🎵";
+		_compactIcon.hidden = NO;
+		_compactLock.hidden = YES;
+		_cardLock.hidden = YES;
 		_compactWave.hidden = NO;
 	} else if (type == DIContentCall) {
 		_iconLabel.hidden = NO;
 		_artworkView.hidden = YES;
 		_iconLabel.text = @"📞";
 		_compactIcon.text = @"📞";
+		_compactIcon.hidden = NO;
+		_compactLock.hidden = YES;
+		_cardLock.hidden = YES;
 		[_compactWave stop];
-	} else { // DIContentLock
-		_iconLabel.hidden = NO;
+	} else { // DIContentLock — рисованная иконка, не эмодзи
+		_iconLabel.hidden = YES;
 		_artworkView.hidden = YES;
-		_iconLabel.text = @"🔒";
-		_compactIcon.text = @"🔒";
+		_cardLock.hidden = NO;
+		_cardLock.open = NO;
+		_compactIcon.hidden = YES;
+		_compactLock.hidden = NO;
+		_compactLock.open = NO;
 		[_compactWave stop];
 	}
 	// Мгновенно показываем компакт, плавность — в схлопывании/раскрытии
 	[self applyAlphasAnimated:NO];
 }
 
-- (void)setCardIcon:(NSString *)icon {
-	_iconLabel.text = icon;
-	_compactIcon.text = icon;
+- (void)setLockOpen:(BOOL)open {
+	_cardLock.open = open;
+	_compactLock.open = open;
 }
 
 - (void)applyAlphasAnimated:(BOOL)animated {
@@ -324,6 +409,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_cardContent.frame = self.bounds;
 	// Компакт: иконка слева, wave справа
 	_compactIcon.frame = CGRectMake(16, (kPillH - 24) / 2.0, 24, 24);
+	_compactLock.frame = _compactIcon.frame;
 	_compactWave.frame = CGRectMake(W - 16 - 25, (kPillH - 16) / 2.0, 25, 16);
 	if (H <= kPillH + 1.0) return;
 	// Карточка: иконка слева, тексты справа
@@ -331,6 +417,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	CGFloat iconY = (H - iconSize) / 2.0;
 	_artworkView.frame = CGRectMake(pad, iconY, iconSize, iconSize);
 	_iconLabel.frame = _artworkView.frame;
+	_cardLock.frame = _artworkView.frame;
 	CGFloat tx = pad + iconSize + 14.0, tw = W - tx - pad;
 	_titleLabel.frame = CGRectMake(tx, iconY + 4.0, tw, 22.0);
 	_subtitleLabel.frame = CGRectMake(tx, iconY + 28.0, tw, 20.0);
@@ -340,7 +427,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_expanded = expanded;
 	CGFloat speed = MAX(DIAnimSpeed, 0.2);
 	CGFloat dur = (expanded ? 0.55 : 0.38) / speed;
-	CGFloat targetR = expanded ? 30.0 : kPillH / 2.0;
+	CGFloat targetR = !expanded ? kPillH / 2.0 : (_contentType == DIContentLock ? 27.0 : 30.0);
 	if (!animated) {
 		self.layer.cornerRadius = targetR;
 		[self applyAlphasAnimated:NO];
@@ -431,7 +518,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 - (void)onRotate {
 	if (_island.expanded) {
-		_islandWindow.frame = DICardFrame(_island.contentType == DIContentMedia ? kCardHMedia : kCardHCall);
+		DIContentType t = _island.contentType;
+		_islandWindow.frame = DICardFrame((t == DIContentMedia) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0));
 	} else {
 		_islandWindow.frame = DIPillFrame();
 	}
@@ -440,16 +528,8 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 - (void)onTap {
 	if (!DIEnabled) return;
-	if (_island.contentType == DIContentNone) {
-		[UIView animateWithDuration:0.12 animations:^{
-			self.island.transform = CGAffineTransformMakeScale(1.06, 1.12);
-		} completion:^(BOOL f) {
-			[UIView animateWithDuration:0.25 animations:^{
-				self.island.transform = CGAffineTransformIdentity;
-			}];
-		}];
-		return;
-	}
+	// Пустая пилюля на тапы не реагирует — раскрытие только при активности
+	if (_island.contentType == DIContentNone) return;
 	[self setExpanded:!_island.expanded animated:YES];
 }
 
@@ -476,7 +556,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {
-	CGFloat h = _island.contentType == DIContentMedia ? kCardHMedia : kCardHCall;
+	DIContentType t = _island.contentType;
+	// Замок — широкий низкий бар, а не высокая карточка
+	CGFloat h = (t == DIContentMedia) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0);
 	CGRect target = expanded ? DICardFrame(h) : DIPillFrame();
 	_island.compactEnabled = DICompactIcons;
 	if (expanded) [self haptic];
@@ -532,7 +614,15 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)refresh {
-	if (_island.contentType == DIContentLock) return; // замком управляют didLock/didUnlock
+	[self refreshForce:NO];
+}
+
+- (void)finishUnlock {
+	[self refreshForce:YES];
+}
+
+- (void)refreshForce:(BOOL)force {
+	if (!force && _island.contentType == DIContentLock) return; // замком управляют didLock/didUnlock
 	DIContentType want = DIContentNone;
 	NSString *t = nil, *s = nil;
 	UIImage *a = nil;
@@ -588,10 +678,10 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	if (!DIEnabled) return;
 	[self haptic];
 	[_island setContent:DIContentLock title:@"Разблокировано" subtitle:@"" artwork:nil];
-	[_island setCardIcon:@"🔓"];
+	[_island setLockOpen:YES];
 	[self setExpanded:YES animated:YES];
-	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(refresh) object:nil];
-	[self performSelector:@selector(refresh) withObject:nil afterDelay:0.9];
+	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(finishUnlock) object:nil];
+	[self performSelector:@selector(finishUnlock) withObject:nil afterDelay:0.9];
 }
 
 #pragma mark - CXCallObserverDelegate
