@@ -2,6 +2,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <MediaPlayer/MediaPlayer.h>
 #import <CallKit/CallKit.h>
+#import <AVFoundation/AVFoundation.h>
 #include <dlfcn.h>
 #include <notify.h>
 
@@ -273,7 +274,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, assign) BOOL expanded;
 @property (nonatomic, assign) BOOL compactEnabled;
 @property (nonatomic, assign) DIContentType contentType;
-@property (nonatomic, strong) UIView *liveDot;
+@property (nonatomic, assign) BOOL privacyOn;
 // карточка
 @property (nonatomic, strong) UIView *cardContent;
 @property (nonatomic, strong) UIImageView *artworkView;
@@ -288,6 +289,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, strong) DILockIconView *compactLock;
 @property (nonatomic, strong) DIBatteryIconView *cardBattery;
 @property (nonatomic, strong) DIBatteryIconView *compactBattery;
+@property (nonatomic, strong) UILabel *compactPct;
 @property (nonatomic, assign) CGFloat batteryLevel;
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art;
 - (void)setLockOpen:(BOOL)open;
@@ -308,11 +310,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		self.userInteractionEnabled = YES;
 		_compactEnabled = YES;
 
-		_liveDot = [[UIView alloc] initWithFrame:CGRectMake(kPillW - 30, (kPillH - 10) / 2.0, 10, 10)];
-		_liveDot.backgroundColor = [UIColor colorWithRed:0.2 green:0.85 blue:0.35 alpha:1.0];
-		_liveDot.layer.cornerRadius = 5.0;
-		_liveDot.alpha = 0.0;
-		[self addSubview:_liveDot];
+		// liveDot удалён — мешал тексту
 
 		// --- компактный слой пилюли ---
 		_compactContent = [[UIView alloc] init];
@@ -332,6 +330,12 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactBattery = [[DIBatteryIconView alloc] init];
 		_compactBattery.hidden = YES;
 		[_compactContent addSubview:_compactBattery];
+		_compactPct = [[UILabel alloc] init];
+		_compactPct.font = [UIFont boldSystemFontOfSize:12.0];
+		_compactPct.textColor = [UIColor whiteColor];
+		_compactPct.textAlignment = NSTextAlignmentRight;
+		_compactPct.hidden = YES;
+		[_compactContent addSubview:_compactPct];
 
 		// --- слой карточки ---
 		_cardContent = [[UIView alloc] init];
@@ -394,20 +398,19 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 - (void)setContent:(DIContentType)type title:(NSString *)title subtitle:(NSString *)sub artwork:(UIImage *)art {
 	_contentType = type;
 	if (type == DIContentNone) {
-		[self stopPulse];
 		[_compactWave stop];
 		_cardLock.hidden = YES;
 		_compactLock.hidden = YES;
 		_cardBattery.hidden = YES;
 		_compactBattery.hidden = YES;
 		[UIView animateWithDuration:0.25 animations:^{
-			self.liveDot.alpha = 0.0;
 			self.compactContent.alpha = 0.0;
 		}];
 		return;
 	}
 	_titleLabel.text = title ?: @"";
 	_subtitleLabel.text = sub ?: @"";
+	_compactPct.hidden = (type != DIContentCharging);
 	if (type == DIContentMedia) {
 		_iconLabel.hidden = (art != nil);
 		_artworkView.hidden = (art == nil);
@@ -440,6 +443,7 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 		_compactLock.hidden = YES;
 		_compactBattery.hidden = NO;
 		_compactBattery.level = _batteryLevel;
+		_compactPct.text = title; // title уже "82%"
 		[_compactWave stop];
 	} else { // DIContentLock — рисованная иконка, не эмодзи
 		_iconLabel.hidden = YES;
@@ -465,37 +469,18 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 - (void)applyAlphasAnimated:(BOOL)animated {
 	BOOL has = _contentType != DIContentNone;
 	BOOL showCompact = has && !_expanded && _compactEnabled;
-	BOOL showDot = has && (!showCompact || _contentType == DIContentCall || _contentType == DIContentCharging);
 	void (^apply)(void) = ^{
 		self.cardContent.alpha = _expanded && has ? 1.0 : 0.0;
 		self.compactContent.alpha = showCompact ? 1.0 : 0.0;
-		self.liveDot.alpha = showDot ? 1.0 : 0.0;
 	};
 	if (animated) {
 		[UIView animateWithDuration:0.25 animations:apply];
 	} else {
 		apply();
 	}
-	// Живые анимации: wave только в компакте музыки, пульс — в компакте звонка
+	// Wave только в компакте музыки
 	if (_contentType == DIContentMedia && showCompact) [_compactWave start];
 	else [_compactWave stop];
-	if (_contentType == DIContentCall && !_expanded) [self startPulse];
-	else [self stopPulse];
-}
-
-- (void)startPulse {
-	if ([_liveDot.layer animationForKey:@"pulse"]) return;
-	CABasicAnimation *a = [CABasicAnimation animationWithKeyPath:@"opacity"];
-	a.fromValue = @1.0;
-	a.toValue = @0.25;
-	a.duration = 0.7;
-	a.autoreverses = YES;
-	a.repeatCount = HUGE_VALF;
-	[_liveDot.layer addAnimation:a forKey:@"pulse"];
-}
-
-- (void)stopPulse {
-	[_liveDot.layer removeAnimationForKey:@"pulse"];
 }
 
 - (void)layoutSubviews {
@@ -504,10 +489,12 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	_compactContent.frame = self.bounds;
 	_cardContent.frame = self.bounds;
 	// Компакт: иконка слева, wave справа
-	_compactIcon.frame = CGRectMake(16, (kPillH - 24) / 2.0, 24, 24);
+	CGFloat iconX = _privacyOn ? 32.0 : 16.0; // точка приватности живёт слева
+	_compactIcon.frame = CGRectMake(iconX, (kPillH - 24) / 2.0, 24, 24);
 	_compactLock.frame = _compactIcon.frame;
 	_compactBattery.frame = _compactIcon.frame;
 	_compactWave.frame = CGRectMake(W - 16 - 25, (kPillH - 16) / 2.0, 25, 16);
+	_compactPct.frame = CGRectMake(W - 16 - 44, (kPillH - 18) / 2.0, 44, 18);
 	if (H <= kPillH + 1.0) return;
 	// Карточка: иконка слева, тексты справа
 	CGFloat pad = 18.0, iconSize = 56.0;
@@ -550,9 +537,30 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 @end
 
+// ================= Окно на весь экран, прозрачное для тапов =================
+// Маленькое окно мешало бы кружку и точке за пределами пилюли,
+// поэтому окно полноэкранное, а тапы пропускаем везде кроме острова/кружка/точки.
+@interface DIIslandWindow : UIWindow
+@property (nonatomic, weak) UIView *islandView;
+@property (nonatomic, weak) UIView *miniView;
+@property (nonatomic, weak) UIView *dotView;
+@end
+
+@implementation DIIslandWindow
+
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+	UIView *hit = [super hitTest:point withEvent:event];
+	if (hit == self) return nil;
+	if (hit == _islandView || hit == _miniView || hit == _dotView) return hit;
+	if ([hit isDescendantOfView:_islandView] || [hit isDescendantOfView:_miniView]) return hit;
+	return nil;
+}
+
+@end
+
 // ================= Менеджер =================
 @interface DIIslandManager : NSObject <CXCallObserverDelegate>
-@property (nonatomic, strong) UIWindow *islandWindow;
+@property (nonatomic, strong) DIIslandWindow *islandWindow;
 @property (nonatomic, strong) DIIslandView *island;
 @property (nonatomic, strong) NSTimer *pollTimer;
 @property (nonatomic, strong) CXCallObserver *callObserver;
@@ -566,8 +574,24 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 @property (nonatomic, assign) BOOL chgFull;
 @property (nonatomic, assign) CGFloat chgLevel;
 @property (nonatomic, assign) NSTimeInterval lastUnlock;
+@property (nonatomic, assign) BOOL locked;
+@property (nonatomic, assign) BOOL noAutoExpand;
+@property (nonatomic, assign) BOOL camActive;
+@property (nonatomic, assign) BOOL micActive;
+@property (nonatomic, assign) DIContentType secondary;
+@property (nonatomic, assign) BOOL swapped;
+@property (nonatomic, copy) NSString *lastActKey;
+@property (nonatomic, strong) UIView *miniView;
+@property (nonatomic, strong) UILabel *miniIcon;
+@property (nonatomic, strong) UIImageView *miniArt;
+@property (nonatomic, strong) DIBatteryIconView *miniBattery;
+@property (nonatomic, strong) UIView *privacyDot;
 + (instancetype)shared;
 - (void)install;
+- (void)layoutOverlaysAnimated:(BOOL)animated;
+- (void)setCamActive:(BOOL)active;
+- (void)setMicActive:(BOOL)active;
+- (void)swapPrimary;
 @end
 
 @implementation DIIslandManager
@@ -600,17 +624,48 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	if (_installed) return;
 	_installed = YES;
 
-	CGRect pill = DIPillFrame();
-	_islandWindow = [[UIWindow alloc] initWithFrame:pill];
-	_islandWindow.windowLevel = UIWindowLevelStatusBar + 100;
+	_islandWindow = [[DIIslandWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+	_islandWindow.windowLevel = UIWindowLevelAlert + 100;
 	_islandWindow.backgroundColor = [UIColor clearColor];
 	_islandWindow.hidden = NO;
 	_islandWindow.userInteractionEnabled = YES;
 
-	_island = [[DIIslandView alloc] initWithFrame:_islandWindow.bounds];
-	_island.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+	_island = [[DIIslandView alloc] initWithFrame:DIPillFrame()];
 	_island.compactEnabled = DICompactIcons;
 	[_islandWindow addSubview:_island];
+	_islandWindow.islandView = _island;
+
+	// Кружок второй активности справа от острова (тап — поменять местами)
+	_miniView = [[UIView alloc] initWithFrame:CGRectZero];
+	_miniView.backgroundColor = [UIColor blackColor];
+	_miniView.layer.cornerRadius = 18.5;
+	_miniView.layer.masksToBounds = YES;
+	_miniView.layer.borderWidth = 1.5;
+	_miniView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.25].CGColor;
+	_miniView.alpha = 0.0;
+	[_islandWindow addSubview:_miniView];
+	_islandWindow.miniView = _miniView;
+	_miniIcon = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 37, 37)];
+	_miniIcon.font = [UIFont systemFontOfSize:20.0];
+	_miniIcon.textAlignment = NSTextAlignmentCenter;
+	[_miniView addSubview:_miniIcon];
+	_miniArt = [[UIImageView alloc] initWithFrame:CGRectMake(3, 3, 31, 31)];
+	_miniArt.layer.cornerRadius = 15.5;
+	_miniArt.layer.masksToBounds = YES;
+	_miniArt.hidden = YES;
+	[_miniView addSubview:_miniArt];
+	_miniBattery = [[DIBatteryIconView alloc] initWithFrame:CGRectMake(6, 6, 25, 25)];
+	_miniBattery.hidden = YES;
+	[_miniView addSubview:_miniBattery];
+	UITapGestureRecognizer *mtap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(swapPrimary)];
+	[_miniView addGestureRecognizer:mtap];
+
+	// Точка приватности (камера/микрофон)
+	_privacyDot = [[UIView alloc] initWithFrame:CGRectZero];
+	_privacyDot.layer.cornerRadius = 5.0;
+	_privacyDot.alpha = 0.0;
+	[_islandWindow addSubview:_privacyDot];
+	_islandWindow.dotView = _privacyDot;
 
 	[UIDevice currentDevice].batteryMonitoringEnabled = YES;
 	_pollTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self
@@ -620,13 +675,14 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)onRotate {
+	_islandWindow.frame = [UIScreen mainScreen].bounds;
 	if (_island.expanded) {
 		DIContentType t = _island.contentType;
-		_islandWindow.frame = DICardFrame((t == DIContentMedia) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0));
+		_island.frame = DICardFrame((t == DIContentMedia) ? kCardHMedia : (t == DIContentCall ? kCardHCall : 56.0));
 	} else {
-		_islandWindow.frame = DIPillFrame();
+		_island.frame = DIPillFrame();
 	}
-	_island.frame = _islandWindow.bounds;
+	[self layoutOverlaysAnimated:NO];
 }
 
 - (void)onTap {
@@ -677,16 +733,16 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	if (animated) {
 		CGFloat speed = MAX(DIAnimSpeed, 0.2);
 		CGFloat dur = (expanded ? 0.55 : 0.38) / speed;
-		// Тот же спринг, что и у скругления — окно и контент движутся синхронно
+		// Тот же спринг, что и у скругления — остров и оверлеи движутся синхронно
 		[UIView animateWithDuration:dur delay:0.0 usingSpringWithDamping:(expanded ? 0.72 : 0.82)
 			initialSpringVelocity:(expanded ? 0.55 : 0.4) options:0 animations:^{
-				self.islandWindow.frame = target;
-				self.island.frame = self.islandWindow.bounds;
+				self.island.frame = target;
 				[self.island layoutIfNeeded];
 			} completion:nil];
+		[self layoutOverlaysAnimated:YES];
 	} else {
-		_islandWindow.frame = target;
-		_island.frame = _islandWindow.bounds;
+		_island.frame = target;
+		[self layoutOverlaysAnimated:NO];
 	}
 	[_island setExpanded:expanded animated:animated];
 }
@@ -698,9 +754,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	}
 	_islandWindow.hidden = NO;
 	// TopOffset могли поменять в настройках — ровняем свёрнутую пилюлю
-	if (!_island.expanded && !CGRectEqualToRect(_islandWindow.frame, DIPillFrame())) {
-		_islandWindow.frame = DIPillFrame();
-		_island.frame = _islandWindow.bounds;
+	if (!_island.expanded && !CGRectEqualToRect(_island.frame, DIPillFrame())) {
+		_island.frame = DIPillFrame();
+		[self layoutOverlaysAnimated:NO];
 	}
 
 	NSDictionary *info = [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo;
@@ -739,59 +795,79 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 
 - (void)finishUnlock {
 	_islandWindow.windowLevel = UIWindowLevelAlert + 100;
+	_noAutoExpand = YES;
 	[self refreshForce:YES];
+	_noAutoExpand = NO;
+	// После разблокировки только схлопываем — раскрывался один индикатор блокировки
+	[self setExpanded:NO animated:YES];
+	[self layoutOverlaysAnimated:NO];
 }
 
 - (void)refreshForce:(BOOL)force {
 	if (!force && _island.contentType == DIContentLock) return; // замком управляют didLock/didUnlock
-	DIContentType want = DIContentNone;
+	// Мультиактивность по приоритету: звонок > музыка > зарядка
+	NSMutableArray *acts = [NSMutableArray array];
+	if (DIShowCalls && _hasCall) [acts addObject:@(DIContentCall)];
+	if (DIShowMedia && _mediaPlaying) [acts addObject:@(DIContentMedia)];
+	else if (DIShowCharging && _chgActive) [acts addObject:@(DIContentCharging)];
+	if (acts.count == 0 && DIFake) [acts addObject:@(DIContentMedia)];
+	NSString *key = [acts componentsJoinedByString:@","];
+	if (![key isEqualToString:_lastActKey ?: @""]) { _swapped = NO; _lastActKey = [key copy]; }
+	DIContentType primary = DIContentNone, secondary = DIContentNone;
+	if (acts.count > 0) primary = (DIContentType)[acts[0] integerValue];
+	if (acts.count > 1) secondary = (DIContentType)[acts[1] integerValue];
+	if (_swapped && secondary != DIContentNone) {
+		DIContentType tmp = primary; primary = secondary; secondary = tmp;
+	}
+	_secondary = secondary;
+
 	NSString *t = nil, *s = nil;
 	UIImage *a = nil;
-	if (DIShowCalls && _hasCall) {
-		want = DIContentCall;
+	if (primary == DIContentCall) {
 		t = @"Телефонный звонок";
 		s = @"Нажмите, чтобы раскрыть";
-	} else if (DIShowMedia && _mediaPlaying) {
-		want = DIContentMedia;
-		t = _trackTitle ?: @"Музыка";
-		s = _trackArtist ?: @"Сейчас играет";
-		a = _trackArt;
-	} else if (DIShowCharging && _chgActive) {
-		want = DIContentCharging;
+	} else if (primary == DIContentMedia) {
+		if (_mediaPlaying) {
+			t = _trackTitle ?: @"Музыка";
+			s = _trackArtist ?: @"Сейчас играет";
+			a = _trackArt;
+		} else {
+			t = @"Тестовый трек";
+			s = @"Фейк-активность для превью";
+		}
+	} else if (primary == DIContentCharging) {
 		int pct = (int)round(MAX(_chgLevel, 0.0) * 100.0);
 		t = [NSString stringWithFormat:@"%d%%", pct];
 		s = _chgFull ? @"Заряжено" : @"Заряжается";
 	}
-	if (want == DIContentNone && DIFake) {
-		want = DIContentMedia;
-		t = @"Тестовый трек";
-		s = @"Фейк-активность для превью";
-		a = nil;
-	}
 	// Зарядка: проценты обновляем тихо, без перераскрытия
-	if (want == DIContentCharging && want == _island.contentType) {
+	if (primary == DIContentCharging && primary == _island.contentType) {
 		_island.batteryLevel = _chgLevel;
-		[_island setContent:want title:t subtitle:s artwork:nil];
+		[_island setContent:primary title:t subtitle:s artwork:nil];
+		[self layoutOverlaysAnimated:NO];
 		return;
 	}
 
-	BOOL contentChanged = (want != _island.contentType)
-		|| (want == DIContentMedia && (![t isEqualToString:_island.titleLabel.text]));
+	BOOL contentChanged = (primary != _island.contentType)
+		|| (primary == DIContentMedia && (![t isEqualToString:_island.titleLabel.text]));
 	if (contentChanged) {
-		[_island setContent:want title:t subtitle:s artwork:a];
-		if (want != DIContentNone) {
+		[_island setContent:primary title:t subtitle:s artwork:a];
+		BOOL mayExpand = (primary != DIContentNone && !_locked && !_noAutoExpand);
+		if (mayExpand) {
 			[self setExpanded:YES animated:YES];
-			if (want == DIContentMedia) {
+			if (primary == DIContentMedia) {
 				[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoCollapse) object:nil];
 				[self performSelector:@selector(autoCollapse) withObject:nil afterDelay:5.0];
-			} else if (want == DIContentCharging) {
+			} else if (primary == DIContentCharging) {
 				[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoCollapse) object:nil];
 				[self performSelector:@selector(autoCollapse) withObject:nil afterDelay:4.0];
 			}
-		} else {
+		} else if (!_locked && !_noAutoExpand) {
 			[self setExpanded:NO animated:YES];
 		}
+		// на локскрине и в finishUnlock: только контент, раскрытием управляет вызывающий
 	}
+	[self layoutOverlaysAnimated:NO];
 }
 
 - (void)autoCollapse {
@@ -802,8 +878,9 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 }
 
 - (void)didLock {
-	// Экран заблокировали — остров раскрывается с замком и текущим временем
+	// Экран заблокировали: активность уходит в мини, замок — мини-индикатор
 	if (!DIEnabled) return;
+	_locked = YES;
 	static NSDateFormatter *tf = nil;
 	if (!tf) {
 		tf = [[NSDateFormatter alloc] init];
@@ -812,12 +889,14 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	NSString *now = [tf stringFromDate:[NSDate date]];
 	[_island setContent:DIContentLock title:@"Заблокировано" subtitle:now artwork:nil];
 	_islandWindow.windowLevel = 100000; // поверх локскрина
-	[self setExpanded:YES animated:YES];
+	[self setExpanded:NO animated:YES];
+	[self layoutOverlaysAnimated:NO];
 }
 
 - (void)didUnlock {
-	// Разблокировка — замок morph'ится в открытый и остров схлопывается
+	// Разблокировка — расширяется ТОЛЬКО индикатор блокировки, затем всё схлопывается
 	if (!DIEnabled) return;
+	_locked = NO;
 	NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
 	if (now - _lastUnlock < 1.2) return; // хук + нотификация дублируют событие
 	_lastUnlock = now;
@@ -829,11 +908,99 @@ typedef NS_ENUM(NSInteger, DIContentType) {
 	[self performSelector:@selector(finishUnlock) withObject:nil afterDelay:0.9];
 }
 
+- (void)setCamActive:(BOOL)active {
+	_camActive = active;
+	[self layoutOverlaysAnimated:YES];
+}
+
+- (void)setMicActive:(BOOL)active {
+	_micActive = active;
+	[self layoutOverlaysAnimated:YES];
+}
+
+- (void)swapPrimary {
+	if (_secondary == DIContentNone || _island.expanded) return;
+	_swapped = !_swapped;
+	[self haptic];
+	[self refreshForce:YES];
+}
+
+- (void)layoutOverlaysAnimated:(BOOL)animated {
+	// --- мини-кружок второй активности (виден только в мини-режиме) ---
+	BOOL showMini = (_secondary != DIContentNone && !_island.expanded && DIEnabled);
+	CGRect pill = DIPillFrame();
+	if (_secondary == DIContentCall) {
+		_miniIcon.hidden = NO; _miniIcon.text = @"📞";
+		_miniArt.hidden = YES; _miniBattery.hidden = YES;
+	} else if (_secondary == DIContentMedia) {
+		if (_trackArt && _mediaPlaying) {
+			_miniArt.hidden = NO; _miniArt.image = _trackArt;
+			_miniIcon.hidden = YES;
+		} else {
+			_miniIcon.hidden = NO; _miniIcon.text = @"🎵";
+			_miniArt.hidden = YES;
+		}
+		_miniBattery.hidden = YES;
+	} else if (_secondary == DIContentCharging) {
+		_miniBattery.hidden = NO; _miniBattery.level = _chgLevel;
+		_miniIcon.hidden = YES; _miniArt.hidden = YES;
+	}
+	void (^apply)(void) = ^{
+		self.miniView.frame = CGRectMake(CGRectGetMaxX(pill) + 8.0, pill.origin.y, 37.0, 37.0);
+		self.miniView.alpha = showMini ? 1.0 : 0.0;
+	};
+	if (animated) {
+		[UIView animateWithDuration:0.5 delay:0.0 usingSpringWithDamping:0.72
+			initialSpringVelocity:0.5 options:0 animations:apply completion:nil];
+	} else {
+		apply();
+	}
+	[self layoutPrivacyDotAnimated:animated];
+}
+
+- (void)layoutPrivacyDotAnimated:(BOOL)animated {
+	BOOL on = (_camActive || _micActive) && DIEnabled;
+	UIColor *c = _camActive
+		? [UIColor colorWithRed:0.2 green:0.85 blue:0.35 alpha:1.0]
+		: [UIColor colorWithRed:1.0 green:0.8 blue:0.2 alpha:1.0];
+	CGRect f = _privacyDot.frame;
+	CGFloat alpha = 0.0;
+	if (on) {
+		alpha = 1.0;
+		if (_island.expanded) {
+			// Вылезает слева из раскрытой карточки
+			CGFloat cy = CGRectGetMidY(_island.frame);
+			f = CGRectMake(_island.frame.origin.x - 14.0, cy - 5.0, 10.0, 10.0);
+		} else {
+			// Нет активности — рисуем прямо на острове (внутри пилюли слева)
+			CGRect pill = _island.frame;
+			f = CGRectMake(pill.origin.x + 12.0, pill.origin.y + (pill.size.height - 10.0) / 2.0, 10.0, 10.0);
+		}
+	}
+	_island.privacyOn = on;
+	[_island setNeedsLayout];
+	BOOL popping = (on && _privacyDot.alpha < 0.5);
+	if (popping) _privacyDot.transform = CGAffineTransformMakeScale(0.1, 0.1);
+	_privacyDot.backgroundColor = c;
+	void (^apply)(void) = ^{
+		self.privacyDot.frame = f;
+		self.privacyDot.alpha = alpha;
+		self.privacyDot.transform = CGAffineTransformIdentity;
+	};
+	if (animated) {
+		// Капля: пружина с отскоком
+		[UIView animateWithDuration:0.55 delay:0.0 usingSpringWithDamping:0.6
+			initialSpringVelocity:0.6 options:0 animations:apply completion:nil];
+	} else {
+		apply();
+	}
+}
+
 #pragma mark - CXCallObserverDelegate
 - (void)callObserver:(CXCallObserver *)callObserver callChanged:(CXCall *)call {
 	_hasCall = !call.hasEnded;
 	[self refresh];
-	if (_hasCall && DIShowCalls && DIEnabled) {
+	if (_hasCall && DIShowCalls && DIEnabled && !_locked) {
 		[self setExpanded:YES animated:YES];
 		[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(autoCollapse) object:nil];
 		[self performSelector:@selector(autoCollapse) withObject:nil afterDelay:6.0];
@@ -854,6 +1021,80 @@ static void DIWatchLockState(void) {
 	});
 }
 
+static BOOL DIIsSpringBoard(void) {
+	return [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"];
+}
+
+// Репорт камеры/микрофона из процессов приложений:
+// в SpringBoard чужую активность сенсоров не видно, поэтому приложения
+// шлют состояние через notify (state), SpringBoard слушает.
+static int DICamCount = 0;
+static BOOL DIMicOn = NO;
+
+static void DIReportSensors(void) {
+	uint32_t t = 0;
+	notify_register_check("com.listrise.dinapenis.cam", &t);
+	notify_set_state(t, DICamCount > 0 ? 1 : 0);
+	notify_post("com.listrise.dinapenis.cam");
+	notify_register_check("com.listrise.dinapenis.mic", &t);
+	notify_set_state(t, DIMicOn ? 1 : 0);
+	notify_post("com.listrise.dinapenis.mic");
+}
+
+%hook AVCaptureSession
+- (void)startRunning {
+	%orig;
+	if (DIIsSpringBoard()) return;
+	DICamCount++;
+	DIReportSensors();
+}
+- (void)stopRunning {
+	%orig;
+	if (DIIsSpringBoard()) return;
+	if (DICamCount > 0) DICamCount--;
+	DIReportSensors();
+}
+%end
+
+%hook AVAudioSession
+- (BOOL)setActive:(BOOL)active withOptions:(AVAudioSessionSetActiveOptions)options error:(NSError **)error {
+	BOOL ok = %orig;
+	if (DIIsSpringBoard()) return ok;
+	if (ok) {
+		if (!active) {
+			DIMicOn = NO;
+		} else {
+			NSString *cat = self.category;
+			DIMicOn = [cat isEqualToString:AVAudioSessionCategoryRecord]
+				|| [cat isEqualToString:AVAudioSessionCategoryPlayAndRecord]
+				|| [cat isEqualToString:AVAudioSessionCategoryMultiRoute];
+		}
+		DIReportSensors();
+	}
+	return ok;
+}
+- (BOOL)setActive:(BOOL)active error:(NSError **)error {
+	BOOL ok = %orig;
+	if (DIIsSpringBoard()) return ok;
+	if (ok && !active) { DIMicOn = NO; DIReportSensors(); }
+	return ok;
+}
+%end
+
+static void DIWatchSensors(void) {
+	static int camT = 0, micT = 0;
+	notify_register_dispatch("com.listrise.dinapenis.cam", &camT, dispatch_get_main_queue(), ^(int t) {
+		uint64_t s = 0;
+		notify_get_state(camT, &s);
+		[[DIIslandManager shared] setCamActive:(s != 0)];
+	});
+	notify_register_dispatch("com.listrise.dinapenis.mic", &micT, dispatch_get_main_queue(), ^(int t) {
+		uint64_t s = 0;
+		notify_get_state(micT, &s);
+		[[DIIslandManager shared] setMicActive:(s != 0)];
+	});
+}
+
 // Замок/разблокировка (SBLockScreenManager есть на всех iOS 12–15)
 // ================= Точка входа =================
 %hook SBLockScreenManager
@@ -868,8 +1109,12 @@ static void DIWatchLockState(void) {
 %end
 
 %ctor {
+	// В приложениях грузимся только ради репорта камеры/микрофона,
+	// весь остров живёт строго в SpringBoard.
+	if (!DIIsSpringBoard()) return;
 	DILoadPrefs();
 	DIWatchLockState();
+	DIWatchSensors();
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
 		DIPrefsCallback, CFSTR("com.listrise.dinapenis/prefs.changed"),
 		NULL, CFNotificationSuspensionBehaviorCoalesce);
