@@ -1032,7 +1032,7 @@ static int DICamCount = 0;
 static BOOL DIMicOn = NO;
 
 static void DIReportSensors(void) {
-	uint32_t t = 0;
+	int t = 0;
 	notify_register_check("com.listrise.dinapenis.cam", &t);
 	notify_set_state(t, DICamCount > 0 ? 1 : 0);
 	notify_post("com.listrise.dinapenis.cam");
